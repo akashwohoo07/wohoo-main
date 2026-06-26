@@ -1,0 +1,67 @@
+import passport from "passport";
+import { Strategy as GoogleStrategy } from "passport-google-oauth20";
+import User from "../models/User.js";
+
+const initializePassport = () => {
+  passport.use(
+    new GoogleStrategy(
+      {
+        clientID: process.env.GOOGLE_CLIENT_ID,
+        clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+        callbackURL: "/api/auth/google/callback",
+        passReqToCallback: true, // ← lets us read req in callback
+      },
+      async (req, accessToken, refreshToken, profile, done) => {
+        try {
+          const mode = req.session?.mode || "login";
+          const email = profile.emails[0].value;
+
+          let user = await User.findOne({
+            $or: [{ googleId: profile.id }, { email }],
+          }).select("+refreshToken");
+
+          if (mode === "login") {
+            // Login: user must already exist
+            if (!user) {
+              return done(null, false, { message: "No account found. Please sign up first." });
+            }
+            // Link googleId if missing
+            if (!user.googleId) {
+              user.googleId = profile.id;
+              user.isVerified = true;
+              await user.save();
+            }
+            return done(null, user);
+          }
+
+          if (mode === "signup") {
+            if (user) {
+              // Already exists — just log them in (no duplicate)
+              if (!user.googleId) {
+                user.googleId = profile.id;
+                user.isVerified = true;
+                await user.save();
+              }
+              return done(null, user);
+            }
+            // Create new user
+            user = await User.create({
+              googleId: profile.id,
+              name: profile.displayName,
+              email,
+              avatar: profile.photos[0]?.value,
+              isVerified: true,
+            });
+            return done(null, user);
+          }
+
+          done(null, false);
+        } catch (err) {
+          done(err, null);
+        }
+      }
+    )
+  );
+};
+
+export { passport, initializePassport };
