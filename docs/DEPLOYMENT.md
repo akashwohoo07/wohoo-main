@@ -6,9 +6,21 @@
 | Layer | URL | Host |
 |---|---|---|
 | Frontend (prod) | https://wohoo-main.akash-bansal-48b.workers.dev | Cloudflare Workers (static assets) |
+| Frontend (beta) | https://wohoo-beta.akash-bansal-48b.workers.dev | Cloudflare Workers (static assets) |
 | Backend (prod) | https://wohoo-api.fly.dev | Fly.io (region `sin`) — API + worker |
 | Backend (beta) | https://wohoo-api-beta.fly.dev | Fly.io (region `sin`) — API only |
 | Repo | github.com/akashwohoo07/wohoo-main | branches: `main` (prod), `beta` |
+
+### 🔴 Release workflow (ALWAYS follow)
+1. Make the change → deploy to **beta** (frontend + backend) → **ask the user if they want to
+   manually test the feature on beta**.
+2. Only after beta is confirmed working → promote to **prod**.
+3. Never deploy straight to prod without beta first.
+
+Frontend envs are two separate Cloudflare Workers built with different `VITE_API_URL`:
+- prod build → `https://wohoo-api.fly.dev`, deploy `wohoo-main` (default `wrangler.jsonc`)
+- beta build → `https://wohoo-api-beta.fly.dev`, deploy `wohoo-beta` (`wrangler.beta.jsonc`)
+Always rebuild with the correct `VITE_API_URL` before each deploy (the `dist/` is shared/transient).
 
 **Accounts:** GitHub `akashwohoo07` · Fly `akash.bansal@wohoo.in` · Cloudflare `akash-bansal-48b` ·
 MongoDB Atlas (prod cluster `wohoo-prod`, beta cluster `cluster0`) · Upstash (prod + beta Redis).
@@ -19,13 +31,17 @@ MongoDB Atlas (prod cluster `wohoo-prod`, beta cluster `cluster0`) · Upstash (p
 
 ### How to redeploy
 
-**Frontend** (currently deployed manually via wrangler — Git auto-build not yet wired):
+**Frontend** (deployed manually via wrangler — Git auto-build not yet wired):
 ```bash
 cd client
-VITE_API_URL="https://wohoo-api.fly.dev" npm run build   # bake prod backend URL; other VITE_* come from client/.env
+# BETA first:
+VITE_API_URL="https://wohoo-api-beta.fly.dev" npm run build
+npx wrangler deploy --config wrangler.beta.jsonc          # → wohoo-beta.akash-bansal-48b.workers.dev
+# then PROD (after beta verified):
+VITE_API_URL="https://wohoo-api.fly.dev" npm run build
 npx wrangler deploy                                       # → wohoo-main.akash-bansal-48b.workers.dev
 ```
-SPA routing is handled by `client/wrangler.jsonc` (`not_found_handling: single-page-application`).
+SPA routing is handled by the wrangler configs (`not_found_handling: single-page-application`).
 Do NOT add a `public/_redirects` file — it conflicts with Workers assets and breaks deploy.
 
 **Backend** (manual, per environment):
