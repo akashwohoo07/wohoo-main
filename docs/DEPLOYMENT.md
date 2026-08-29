@@ -1,5 +1,65 @@
 # Deployment & CI/CD
 
+## ⚡ Current live deployment (runbook) — updated 2026-08-29
+
+**Live URLs**
+| Layer | URL | Host |
+|---|---|---|
+| Frontend (prod) | https://wohoo-main.akash-bansal-48b.workers.dev | Cloudflare Workers (static assets) |
+| Backend (prod) | https://wohoo-api.fly.dev | Fly.io (region `sin`) — API + worker |
+| Backend (beta) | https://wohoo-api-beta.fly.dev | Fly.io (region `sin`) — API only |
+| Repo | github.com/akashwohoo07/wohoo-main | branches: `main` (prod), `beta` |
+
+**Accounts:** GitHub `akashwohoo07` · Fly `akash.bansal@wohoo.in` · Cloudflare `akash-bansal-48b` ·
+MongoDB Atlas (prod cluster `wohoo-prod`, beta cluster `cluster0`) · Upstash (prod + beta Redis).
+
+**Fly apps & processes**
+- `wohoo-api` (prod): process `app` (web, scale-to-zero) + process `worker` (1 machine, always-on).
+- `wohoo-api-beta`: process `app` only (no Redis, worker off → inline email fallback).
+
+### How to redeploy
+
+**Frontend** (currently deployed manually via wrangler — Git auto-build not yet wired):
+```bash
+cd client
+VITE_API_URL="https://wohoo-api.fly.dev" npm run build   # bake prod backend URL; other VITE_* come from client/.env
+npx wrangler deploy                                       # → wohoo-main.akash-bansal-48b.workers.dev
+```
+SPA routing is handled by `client/wrangler.jsonc` (`not_found_handling: single-page-application`).
+Do NOT add a `public/_redirects` file — it conflicts with Workers assets and breaks deploy.
+
+**Backend** (manual, per environment):
+```bash
+cd backend
+fly deploy -a wohoo-api-beta --ha=false --process-groups app     # beta (app only)
+fly deploy -a wohoo-api --ha=false --process-groups app          # prod app
+fly scale count worker=1 -a wohoo-api                             # ensure prod worker running
+```
+Auto-deploy via GitHub Actions (`deploy-backend.yml`) triggers on push to `beta`/`main` once it's on
+the branch; `FLY_API_TOKEN` is already set as a repo secret.
+
+### How to change env / secrets
+- **Backend secrets** (Mongo, Redis, Google, email, JWT): `fly secrets set KEY="value" -a <app>`
+  then the machine restarts. `CLIENT_URL` must equal the frontend origin (CORS). Prod `CLIENT_URL`
+  = the Cloudflare URL above.
+- **Frontend build vars** (`VITE_*`): baked at build time. Change by rebuilding with the new value
+  (inline env or `client/.env`) and running `npx wrangler deploy`.
+
+### Gotchas already hit & fixed (don't repeat)
+- Fly region `bom` (Mumbai) is **deprecated** → use `sin` (Singapore).
+- `connect-redis` v7 is a **default** ESM export → `import RedisStore from "connect-redis"` (named import breaks native Node, though it passes in Vitest).
+- `config/db.js` reads `MONGO_URL`; deploy secret is `MONGODB_URI` → `db.js` now accepts both.
+- Mongo `bad auth` = wrong/URL-unsafe password → use an **alphanumeric** DB password.
+- Cloudflare Workers assets: no `_redirects` file; use `wrangler.jsonc` SPA handling.
+- Cloudflare monorepo: build **Root directory** must be `client` (if using the Git-connected build).
+
+### Still TODO (known, not blocking)
+- Fix Google **Places API (New)** key (403) so Explore works: enable Places API (New) + billing,
+  remove HTTP-referrer restriction on the key.
+- Rotate the Google OAuth client secret (it appeared in chat during setup).
+- Optional: separate **beta frontend** pointing at `wohoo-api-beta`; wire frontend Git auto-deploy.
+- Set spending caps on Fly / Atlas / Upstash.
+
 ## Pipeline overview
 
 ```

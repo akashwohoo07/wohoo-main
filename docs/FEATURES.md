@@ -51,6 +51,15 @@ Update this file whenever a feature is added, changed, or removed. Keep entries 
 
 ## Changelog
 
+### 2026-08-29 — 🚀 Went live (first production deploy)
+- **Frontend** deployed to **Cloudflare Workers** (static assets) → https://wohoo-main.akash-bansal-48b.workers.dev
+  (via `client/wrangler.jsonc`, SPA handling; removed `_redirects` which conflicts with Workers assets).
+- **Backend** deployed to **Fly.io** (`sin` region): prod `wohoo-api` (API + worker), beta `wohoo-api-beta` (API only).
+- Data: MongoDB Atlas (prod `wohoo-prod`, beta `cluster0`) + Upstash Redis (prod).
+- Fixed real deploy-only bugs: Fly region `bom`→`sin`, `connect-redis` default import, `MONGO_URL`/`MONGODB_URI`
+  mismatch, alphanumeric Mongo password, Cloudflare `_redirects` conflict.
+- Full runbook (redeploy/env commands, gotchas, TODO) in `docs/DEPLOYMENT.md`.
+
 ### 2026-08-29 — CI/CD pipeline + deployment config
 - **Monorepo, beta→prod flow**: CI (`ci.yml`) runs on `beta` + `main`; `deploy-backend.yml`
   re-tests then `flyctl deploy`s to the branch's Fly app (staging `wohoo-api-beta` / prod `wohoo-api`),
