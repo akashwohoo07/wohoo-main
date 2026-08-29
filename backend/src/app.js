@@ -51,7 +51,7 @@ app.use(session({
   cookie: {
     httpOnly: true,
     secure: config.isProd,
-    sameSite: "lax",
+    sameSite: config.isProd ? "none" : "lax", // cross-domain frontend/backend in prod
     maxAge: 5 * 60 * 1000,
   },
 }));

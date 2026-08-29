@@ -10,16 +10,19 @@ const generateTokens = (userId) => {
 
 const setCookies = (res, accessToken, refreshToken) => {
   const isProd = process.env.NODE_ENV === "production";
+  // Frontend and backend are on different domains in prod, so cross-site cookies
+  // require sameSite:"none" + secure. In dev (http localhost) use "lax".
+  const sameSite = isProd ? "none" : "lax";
   res.cookie("accessToken", accessToken, {
     httpOnly: true,
     secure: isProd,
-    sameSite: "lax",
+    sameSite,
     maxAge: 15 * 60 * 1000,
   });
   res.cookie("refreshToken", refreshToken, {
     httpOnly: true,
     secure: isProd,
-    sameSite: "lax",
+    sameSite,
     maxAge: 7 * 24 * 60 * 60 * 1000,
   });
 };
