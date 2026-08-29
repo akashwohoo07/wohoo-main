@@ -5,6 +5,14 @@ import { protect } from "../middleware/auth.js";
 
 const router = express.Router();
 
+// Never cache auth responses — prevents browsers from serving a stale OAuth
+// redirect (or stale /me) after any config change. Keeps login robust for users.
+router.use((req, res, next) => {
+  res.set("Cache-Control", "no-store, no-cache, must-revalidate");
+  res.set("Pragma", "no-cache");
+  next();
+});
+
 router.get("/google", (req, res, next) => {
   req.session = req.session || {};
   req.session.mode = req.query.mode || "login";
