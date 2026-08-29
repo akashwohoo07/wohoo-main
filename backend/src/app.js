@@ -12,7 +12,7 @@ import { passport, initializePassport } from "./config/passport.js";
 import { config } from "./config/env.js";
 import { redisClient } from "./config/redis.js";
 import { sanitizeRequest } from "./middleware/sanitize.js";
-import { globalLimiter, authLimiter } from "./middleware/rateLimiter.js";
+import { globalLimiter } from "./middleware/rateLimiter.js";
 import authRoutes from "./routes/authRoutes.js";
 import tripRoutes from "./routes/tripRoutes.js";
 import userRoutes from "./routes/userRoutes.js";
@@ -63,11 +63,12 @@ app.use(express.urlencoded({ extended: true, limit: "10kb" }));
 app.use(sanitizeRequest);
 app.use(passport.initialize());
 
-// Global rate limit across the whole API surface
+// Global rate limit across the whole API surface (covers auth too). Auth is
+// Google-OAuth only (no password brute-force surface), and /api/auth/me is
+// polled on every page load — so the global limiter is the right ceiling here.
 app.use("/api", globalLimiter);
 
-// Stricter limit on auth endpoints (brute-force protection)
-app.use("/api/auth", authLimiter, authRoutes);
+app.use("/api/auth", authRoutes);
 app.use("/api/trips", tripRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/follow", followRoutes);
