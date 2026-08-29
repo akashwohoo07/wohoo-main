@@ -5,7 +5,7 @@
 **Live URLs**
 | Layer | URL | Host |
 |---|---|---|
-| Frontend (prod) | https://wohoo-main.akash-bansal-48b.workers.dev | Cloudflare Workers (static assets) |
+| Frontend (prod) | **https://wohoo.in** (+ www) — also wohoo-main.akash-bansal-48b.workers.dev | Cloudflare Workers (static assets); custom domain via `wrangler.jsonc` routes |
 | Frontend (beta) | https://wohoo-beta.akash-bansal-48b.workers.dev | Cloudflare Workers (static assets) |
 | Backend (prod) | https://wohoo-api.fly.dev | Fly.io (region `sin`) — API + worker |
 | Backend (beta) | https://wohoo-api-beta.fly.dev | Fly.io (region `sin`) — API only |
