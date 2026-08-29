@@ -7,7 +7,7 @@
 |---|---|---|
 | Frontend (prod) | **https://wohoo.in** (+ www) — also wohoo-main.akash-bansal-48b.workers.dev | Cloudflare Workers (static assets); custom domain via `wrangler.jsonc` routes |
 | Frontend (beta) | https://wohoo-beta.akash-bansal-48b.workers.dev | Cloudflare Workers (static assets) |
-| Backend (prod) | https://wohoo-api.fly.dev | Fly.io (region `sin`) — API + worker |
+| Backend (prod) | **https://api.wohoo.in** (Cloudflare-proxied → Fly) — also wohoo-api.fly.dev | Fly.io (region `sin`) — API + worker |
 | Backend (beta) | https://wohoo-api-beta.fly.dev | Fly.io (region `sin`) — API only |
 | Repo | github.com/akashwohoo07/wohoo-main | branches: `main` (prod), `beta` |
 
@@ -38,8 +38,8 @@ cd client
 VITE_API_URL="https://wohoo-api-beta.fly.dev" npm run build
 npx wrangler deploy --config wrangler.beta.jsonc          # → wohoo-beta.akash-bansal-48b.workers.dev
 # then PROD (after beta verified):
-VITE_API_URL="https://wohoo-api.fly.dev" npm run build
-npx wrangler deploy                                       # → wohoo-main.akash-bansal-48b.workers.dev
+VITE_API_URL="https://api.wohoo.in" npm run build        # api.wohoo.in = same-site as wohoo.in → first-party cookies (mobile login works)
+npx wrangler deploy                                       # → wohoo.in / www.wohoo.in
 ```
 SPA routing is handled by the wrangler configs (`not_found_handling: single-page-application`).
 Do NOT add a `public/_redirects` file — it conflicts with Workers assets and breaks deploy.
