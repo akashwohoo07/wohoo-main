@@ -218,7 +218,7 @@ export default function CreateTrip() {
       await Promise.allSettled(
         invitees.map((inv) => api.post(`/trips/${tripId}/invite`, { email: inv.email, role: inv.role }))
       );
-      navigate("/dashboard");
+      navigate(`/trips/${tripId}`);
     } catch (err) {
       setError(err.response?.data?.message || "Failed to create trip. Please try again.");
     } finally {
