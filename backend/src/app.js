@@ -32,8 +32,19 @@ app.set("trust proxy", 1);
 // Security headers (CSP, HSTS, no-sniff, frameguard, etc.)
 app.use(helmet());
 
+// CORS allowlist: CORS_ORIGINS (comma-separated) if set, else CLIENT_URL, else localhost.
+// Lets one backend serve multiple frontend origins (apex + www + workers.dev).
+const corsAllowlist = (process.env.CORS_ORIGINS || process.env.CLIENT_URL || "http://localhost:5173")
+  .split(",")
+  .map((o) => o.trim())
+  .filter(Boolean);
+
 app.use(cors({
-  origin: process.env.CLIENT_URL || "http://localhost:5173",
+  origin: (origin, cb) => {
+    // Allow requests with no Origin (curl, server-to-server, same-origin) and any allowlisted origin.
+    if (!origin || corsAllowlist.includes(origin)) return cb(null, true);
+    return cb(null, false);
+  },
   credentials: true,
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
   allowedHeaders: ["Content-Type", "Authorization"],
