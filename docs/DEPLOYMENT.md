@@ -51,8 +51,10 @@ fly deploy -a wohoo-api-beta --ha=false --process-groups app     # beta (app onl
 fly deploy -a wohoo-api --ha=false --process-groups app          # prod app
 fly scale count worker=1 -a wohoo-api                             # ensure prod worker running
 ```
-Auto-deploy via GitHub Actions (`deploy-backend.yml`) triggers on push to `beta`/`main` once it's on
-the branch; `FLY_API_TOKEN` is already set as a repo secret.
+**Auto-deploy**: pushing to `beta` runs GitHub Actions (`deploy-backend.yml`) → tests → deploys the
+**beta** backend automatically (app process only). **Prod is never auto-deployed** — promote it
+manually with the command above after beta is verified. `FLY_API_TOKEN` is an org-scoped Fly token
+stored as a repo secret.
 
 ### How to change env / secrets
 - **Backend secrets** (Mongo, Redis, Google, email, JWT): `fly secrets set KEY="value" -a <app>`
