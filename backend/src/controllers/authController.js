@@ -2,29 +2,50 @@ import jwt from "jsonwebtoken";
 import User from "../models/User.js";
 import { hashToken } from "../utils/tokens.js";
 
+// Access token is short-lived (limits the blast radius if one leaks); the
+// refresh token lives 14 days so users stay logged in across tab closes/reopens
+// until they log out manually. JWT expiry and cookie maxAge are kept in sync.
+const ACCESS_TOKEN_TTL = "15m";
+const REFRESH_TOKEN_TTL = "14d";
+const ACCESS_COOKIE_MAX_AGE = 15 * 60 * 1000;              // 15 minutes
+const REFRESH_COOKIE_MAX_AGE = 14 * 24 * 60 * 60 * 1000;  // 14 days
+
 const generateTokens = (userId) => {
-  const accessToken = jwt.sign({ id: userId }, process.env.JWT_SECRET, { expiresIn: "15m" });
-  const refreshToken = jwt.sign({ id: userId }, process.env.JWT_REFRESH_SECRET, { expiresIn: "7d" });
+  const accessToken = jwt.sign({ id: userId }, process.env.JWT_SECRET, { expiresIn: ACCESS_TOKEN_TTL });
+  const refreshToken = jwt.sign({ id: userId }, process.env.JWT_REFRESH_SECRET, { expiresIn: REFRESH_TOKEN_TTL });
   return { accessToken, refreshToken };
 };
 
-const setCookies = (res, accessToken, refreshToken) => {
+// Shared cookie attributes so set + clear stay in sync.
+// - httpOnly: JS can never read the token (defends against XSS token theft).
+// - secure: HTTPS-only (always on when sameSite=none, which browsers require).
+// - sameSite "lax" (default): the cookie is NOT sent on cross-site requests,
+//   which blocks CSRF. Works because api.wohoo.in and wohoo.in are same-site.
+//   Cross-site environments (e.g. beta on *.workers.dev ↔ *.fly.dev) set
+//   COOKIE_SAMESITE=none so the cookie is still delivered there.
+const baseCookieOptions = () => {
   const isProd = process.env.NODE_ENV === "production";
-  // Frontend and backend are on different domains in prod, so cross-site cookies
-  // require sameSite:"none" + secure. In dev (http localhost) use "lax".
-  const sameSite = isProd ? "none" : "lax";
-  res.cookie("accessToken", accessToken, {
+  const sameSite = process.env.COOKIE_SAMESITE || "lax";
+  return {
     httpOnly: true,
-    secure: isProd,
+    secure: isProd || sameSite === "none",
     sameSite,
-    maxAge: 15 * 60 * 1000,
-  });
-  res.cookie("refreshToken", refreshToken, {
-    httpOnly: true,
-    secure: isProd,
-    sameSite,
-    maxAge: 7 * 24 * 60 * 60 * 1000,
-  });
+    path: "/",
+  };
+};
+
+const setCookies = (res, accessToken, refreshToken) => {
+  const opts = baseCookieOptions();
+  res.cookie("accessToken", accessToken, { ...opts, maxAge: ACCESS_COOKIE_MAX_AGE });
+  res.cookie("refreshToken", refreshToken, { ...opts, maxAge: REFRESH_COOKIE_MAX_AGE });
+};
+
+const clearAuthCookies = (res) => {
+  // clearCookie must use the SAME attributes (path/sameSite/secure) the cookie
+  // was set with, or some browsers won't remove it — so manual logout truly logs out.
+  const opts = baseCookieOptions();
+  res.clearCookie("accessToken", opts);
+  res.clearCookie("refreshToken", opts);
 };
 
 export const googleCallback = async (req, res, next) => {
@@ -74,8 +95,7 @@ export const logout = async (req, res, next) => {
         await User.findByIdAndUpdate(decoded.id, { refreshToken: null });
       } catch {}
     }
-    res.clearCookie("accessToken");
-    res.clearCookie("refreshToken");
+    clearAuthCookies(res);
     res.json({ success: true, message: "Logged out" });
   } catch (err) {
     next(err);

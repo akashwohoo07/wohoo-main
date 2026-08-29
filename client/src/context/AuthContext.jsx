@@ -10,18 +10,28 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     let cancelled = false;
 
-    api.get("/auth/me")
-      .then((res) => {
+    const loadUser = async () => {
+      try {
+        const res = await api.get("/auth/me");
         if (!cancelled) setUser(res.data.user);
-      })
-      .catch(() => {
-        // 401 = not logged in, that's fine — don't retry
-        if (!cancelled) setUser(null);
-      })
-      .finally(() => {
+      } catch {
+        // The 15-min access token has likely expired. Try one silent refresh
+        // with the long-lived (14-day) refresh token, then retry /me. This is
+        // what keeps a user logged in after closing and reopening the tab —
+        // they only truly log out if the refresh token is gone/expired/revoked.
+        try {
+          await api.post("/auth/refresh");
+          const res = await api.get("/auth/me");
+          if (!cancelled) setUser(res.data.user);
+        } catch {
+          if (!cancelled) setUser(null); // genuinely logged out
+        }
+      } finally {
         if (!cancelled) setLoading(false);
-      });
+      }
+    };
 
+    loadUser();
     return () => { cancelled = true; };
   }, []); // ← runs ONCE only
 
