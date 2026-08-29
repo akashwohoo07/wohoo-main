@@ -63,8 +63,19 @@ stored as a repo secret.
 - **Frontend build vars** (`VITE_*`): baked at build time. Change by rebuilding with the new value
   (inline env or `client/.env`) and running `npx wrangler deploy`.
 
+### Auth cookies & session lifetime
+- Access token **15m**, refresh token **14d** (hashed in DB, rotated on every refresh). The client
+  silently refreshes on load, so users stay logged in for 14 days across tab close/reopen until they
+  log out manually.
+- Cookie `SameSite` = `COOKIE_SAMESITE` env, **default `lax`** (CSRF-safe). Prod uses `lax` because
+  `api.wohoo.in` and `wohoo.in` are same-site (no override needed). **Beta must set
+  `COOKIE_SAMESITE=none`** — its frontend/back are different sites (`*.workers.dev` ↔ `*.fly.dev`),
+  so `lax` would drop the cookie and login would silently fail.
+- All `/api/auth/*` responses send `Cache-Control: no-store` so browsers never cache a stale OAuth redirect.
+
 ### Gotchas already hit & fixed (don't repeat)
 - Fly region `bom` (Mumbai) is **deprecated** → use `sin` (Singapore).
+- Beta backend **needs `COOKIE_SAMESITE=none`** (cross-site); prod leaves it unset (defaults to secure `lax`).
 - `connect-redis` v7 is a **default** ESM export → `import RedisStore from "connect-redis"` (named import breaks native Node, though it passes in Vitest).
 - `config/db.js` reads `MONGO_URL`; deploy secret is `MONGODB_URI` → `db.js` now accepts both.
 - Mongo `bad auth` = wrong/URL-unsafe password → use an **alphanumeric** DB password.
