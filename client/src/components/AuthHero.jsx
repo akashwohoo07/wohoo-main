@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 // Mirrors the homepage (/) hero: split layout with the beach image, cream
 // background, Cormorant Garamond headings + Jost body, pink-gradient accents.
@@ -31,6 +31,22 @@ const COPY = {
 
 export default function AuthHero({ initialTab = "login" }) {
   const [tab, setTab] = useState(initialTab);
+  const [notice, setNotice] = useState(null);
+
+  // Surface auth failures the backend redirects back with (e.g. login with no account).
+  useEffect(() => {
+    const err = new URLSearchParams(window.location.search).get("error");
+    if (err === "no_account") {
+      setTab("signup");
+      setNotice({
+        type: "info",
+        text: "We couldn't find an account for that Google login. Sign up below to create one — it's free.",
+      });
+    } else if (err) {
+      setNotice({ type: "error", text: "Google sign-in didn't complete. Please try again." });
+    }
+  }, []);
+
   const copy = COPY[tab];
 
   return (
@@ -101,6 +117,19 @@ export default function AuthHero({ initialTab = "login" }) {
           <p className="font-sans font-light leading-[1.8] mt-5 max-w-[38ch] text-white/75 md:text-[#111110]/55 text-[0.95rem]">
             {copy.subtitle}
           </p>
+
+          {/* Auth notice (e.g. "no account found — sign up") */}
+          {notice && (
+            <div
+              className={`mt-6 max-w-sm rounded-2xl px-4 py-3 text-[13px] leading-relaxed font-sans backdrop-blur border ${
+                notice.type === "info"
+                  ? "bg-[#F9A8D4]/25 md:bg-[#F9A8D4]/15 text-white md:text-[#111110] border-[#F9A8D4]/50"
+                  : "bg-red-500/25 md:bg-red-50 text-white md:text-red-700 border-red-400/50"
+              }`}
+            >
+              {notice.text}
+            </div>
+          )}
 
           {/* Log In / Sign Up tabs */}
           <div className="inline-flex mt-8 mb-6 p-1 rounded-full border border-white/25 md:border-[#111110]/12 bg-white/10 md:bg-white/60 backdrop-blur">

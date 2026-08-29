@@ -23,10 +23,22 @@ router.get(
     next();
   },
   (req, res, next) => {
-    // ✅ Use function so CLIENT_URL is read at runtime, not at import time
-    passport.authenticate("google", {
-      failureRedirect: `${process.env.CLIENT_URL}/login`,
-      session: false,
+    // Custom callback so we can redirect back to the frontend with a clear reason
+    // instead of silently bouncing to /login (bad UX).
+    passport.authenticate("google", { session: false }, (err, user) => {
+      const client = process.env.CLIENT_URL;
+      if (err) return res.redirect(`${client}/login?error=oauth_failed`);
+      if (!user) {
+        // Most common: login attempt for an account that doesn't exist → guide to sign up.
+        const mode = req.session?.mode || "login";
+        return res.redirect(
+          mode === "login"
+            ? `${client}/signup?error=no_account`
+            : `${client}/login?error=oauth_failed`
+        );
+      }
+      req.user = user;
+      next();
     })(req, res, next);
   },
   googleCallback
