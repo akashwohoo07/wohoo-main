@@ -1,19 +1,17 @@
-name: Deploy Backend
+name: Deploy Backend (beta)
 
-# Big-company style: never deploy untested code. The pipeline re-runs the test
-# suite, and only on success deploys to the environment matching the branch:
-#   push to beta → Fly staging app (wohoo-api-beta)
-#   push to main → Fly prod app     (wohoo-api)
+# Auto-deploys the BETA backend on push to `beta` (app process only — beta has no worker).
+# PROD is promoted MANUALLY after approval (see docs/DEPLOYMENT.md) — never auto-deployed,
+# per the beta-first release workflow.
 on:
   push:
-    branches: [beta, main]
+    branches: [beta]
     paths:
       - "backend/**"
       - ".github/workflows/deploy-backend.yml"
 
-# Cancel superseded deploys of the same branch
 concurrency:
-  group: deploy-backend-${{ github.ref }}
+  group: deploy-backend-beta
   cancel-in-progress: true
 
 jobs:
@@ -38,18 +36,17 @@ jobs:
       - run: npm test
 
   deploy:
-    name: Deploy to Fly
+    name: Deploy beta to Fly
     needs: test
     runs-on: ubuntu-latest
-    # GitHub Environment gate (set required reviewers on "production" for manual approval)
-    environment: ${{ github.ref_name == 'main' && 'production' || 'staging' }}
+    environment: staging
     defaults:
       run:
         working-directory: backend
     steps:
       - uses: actions/checkout@v4
       - uses: superfly/flyctl-actions/setup-flyctl@master
-      - name: Deploy (${{ github.ref_name }})
-        run: flyctl deploy --remote-only --app ${{ github.ref_name == 'main' && 'wohoo-api' || 'wohoo-api-beta' }}
+      - name: Deploy beta (app process only — beta has no worker)
+        run: flyctl deploy --remote-only --ha=false --process-groups app --app wohoo-api-beta
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
