@@ -220,14 +220,21 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen bg-white">
       {/* Navbar */}
-      <nav className="flex items-center justify-between px-8 py-4 border-b border-zinc-100">
-        <div className="w-8 h-8 bg-rose-500 rounded-lg flex items-center justify-center">
-          <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 004 0 2 2 0 012-2h1.064" />
-          </svg>
-        </div>
+      <nav className="flex items-center justify-between px-4 sm:px-8 py-4 border-b border-zinc-100">
+        <button
+          onClick={() => navigate("/dashboard")}
+          aria-label="Wohoo.in home"
+          className="flex items-baseline leading-none hover:opacity-80 transition-opacity"
+        >
+          <span
+            className="font-serif text-2xl font-bold tracking-tight bg-gradient-to-br from-[#F9A8D4] to-[#ec4899] bg-clip-text text-transparent"
+          >
+            Wohoo
+          </span>
+          <span className="font-serif text-2xl font-bold tracking-tight text-zinc-900">.in</span>
+        </button>
 
-        <div className="flex gap-8">
+        <div className="hidden md:flex gap-8">
           {[
             { label: "Trips", icon: "✈", active: true },
             { label: "Discover", icon: "◎" },
@@ -239,7 +246,7 @@ export default function Dashboard() {
           ))}
         </div>
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3 sm:gap-4">
           {invites.length > 0 && (
             <div className="w-5 h-5 rounded-full bg-rose-500 text-white text-xs flex items-center justify-center font-bold">{invites.length}</div>
           )}
@@ -259,7 +266,7 @@ export default function Dashboard() {
                 <span className="text-xs font-bold text-zinc-600">{initials(user?.name)}</span>
               )}
             </div>
-            <div className="text-left">
+            <div className="text-left hidden sm:block">
               <p className="text-sm font-medium text-zinc-700 leading-tight">{user?.name?.split(" ")[0]}</p>
               {user?.username ? (
                 <p className="text-xs text-zinc-400 leading-tight">@{user.username}</p>
@@ -274,7 +281,7 @@ export default function Dashboard() {
         </div>
       </nav>
 
-      <main className="max-w-6xl mx-auto px-8 py-10">
+      <main className="max-w-6xl mx-auto px-4 sm:px-8 py-6 sm:py-10">
         {/* Pending invitations */}
         {invites.length > 0 && (
           <div className="mb-10">
@@ -286,13 +293,14 @@ export default function Dashboard() {
         )}
 
         {/* Upcoming trips */}
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-serif text-zinc-900">Upcoming trips</h2>
-          <button onClick={() => navigate("/trips/create")} className="flex items-center gap-2 bg-rose-500 hover:bg-rose-600 text-white text-sm font-medium px-5 py-2.5 rounded-full transition-all">
+        <div className="flex items-center justify-between gap-3 mb-6">
+          <h2 className="text-xl sm:text-2xl font-serif text-zinc-900">Upcoming trips</h2>
+          <button onClick={() => navigate("/trips/create")} className="flex items-center gap-2 bg-rose-500 hover:bg-rose-600 text-white text-sm font-medium px-4 sm:px-5 py-2.5 rounded-full transition-all flex-shrink-0">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
             </svg>
-            Create a trip
+            <span className="hidden sm:inline">Create a trip</span>
+            <span className="sm:hidden">Create</span>
           </button>
         </div>
 
@@ -314,7 +322,7 @@ export default function Dashboard() {
         {/* Past trips */}
         {past.length > 0 && (
           <div className="mt-12">
-            <h2 className="text-2xl font-serif text-zinc-900 mb-6">Past trips</h2>
+            <h2 className="text-xl sm:text-2xl font-serif text-zinc-900 mb-6">Past trips</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
               {past.map((trip) => <TripCard key={trip._id} trip={trip} currentUserId={user?._id} />)}
             </div>

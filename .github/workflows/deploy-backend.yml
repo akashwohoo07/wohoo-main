@@ -1,0 +1,55 @@
+name: Deploy Backend
+
+# Big-company style: never deploy untested code. The pipeline re-runs the test
+# suite, and only on success deploys to the environment matching the branch:
+#   push to beta → Fly staging app (wohoo-api-beta)
+#   push to main → Fly prod app     (wohoo-api)
+on:
+  push:
+    branches: [beta, main]
+    paths:
+      - "backend/**"
+      - ".github/workflows/deploy-backend.yml"
+
+# Cancel superseded deploys of the same branch
+concurrency:
+  group: deploy-backend-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/mongodb-binaries
+          key: mongodb-binaries-${{ runner.os }}-v7
+      - run: npm ci
+      - run: npm test
+
+  deploy:
+    name: Deploy to Fly
+    needs: test
+    runs-on: ubuntu-latest
+    # GitHub Environment gate (set required reviewers on "production" for manual approval)
+    environment: ${{ github.ref_name == 'main' && 'production' || 'staging' }}
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+      - name: Deploy (${{ github.ref_name }})
+        run: flyctl deploy --remote-only --app ${{ github.ref_name == 'main' && 'wohoo-api' || 'wohoo-api-beta' }}
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}

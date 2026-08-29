@@ -57,5 +57,5 @@ invitationSchema.index(
   { unique: true, partialFilterExpression: { status: "pending" } }
 );
 
-const Invitation = mongoose.model("Invitation", invitationSchema);
+const Invitation = mongoose.models.Invitation || mongoose.model("Invitation", invitationSchema);
 export default Invitation;

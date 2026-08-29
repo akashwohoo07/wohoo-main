@@ -1,6 +1,5 @@
 import { useState } from "react";
 import api from "../api/axios";
-
 export default function InviteModal({ tripId, onClose, onInvited }) {
   const [email, setEmail] = useState("");
   const [role, setRole] = useState("viewer");
@@ -91,4 +90,4 @@ export default function InviteModal({ tripId, onClose, onInvited }) {
       </div>
     </div>
   );
-}
+} 

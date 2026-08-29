@@ -25,11 +25,12 @@ const initializePassport = () => {
             if (!user) {
               return done(null, false, { message: "No account found. Please sign up first." });
             }
-            // Link googleId if missing
+            // Link googleId if missing — atomic update avoids re-validating
+            // unrelated fields on legacy accounts.
             if (!user.googleId) {
+              await User.findByIdAndUpdate(user._id, { googleId: profile.id, isVerified: true });
               user.googleId = profile.id;
               user.isVerified = true;
-              await user.save();
             }
             return done(null, user);
           }
@@ -38,9 +39,9 @@ const initializePassport = () => {
             if (user) {
               // Already exists — just log them in (no duplicate)
               if (!user.googleId) {
+                await User.findByIdAndUpdate(user._id, { googleId: profile.id, isVerified: true });
                 user.googleId = profile.id;
                 user.isVerified = true;
-                await user.save();
               }
               return done(null, user);
             }

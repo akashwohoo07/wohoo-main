@@ -74,22 +74,21 @@ export default function SearchUsers() {
   return (
     <div className="min-h-screen bg-white">
       {/* Navbar */}
-      <nav className="flex items-center justify-between px-8 py-4 border-b border-zinc-100">
+      <nav className="flex items-center justify-between px-4 sm:px-8 py-4 border-b border-zinc-100">
         <button onClick={() => navigate("/dashboard")} className="flex items-center gap-2 text-sm text-zinc-400 hover:text-zinc-600 transition-colors">
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
           </svg>
           Back
         </button>
-        <div className="w-8 h-8 bg-rose-500 rounded-lg flex items-center justify-center">
-          <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 004 0 2 2 0 012-2h1.064" />
-          </svg>
-        </div>
+        <button className="flex items-baseline leading-none" onClick={() => navigate("/dashboard")} aria-label="Wohoo.in home">
+          <span className="font-serif text-xl font-bold tracking-tight bg-gradient-to-br from-[#F9A8D4] to-[#ec4899] bg-clip-text text-transparent">Wohoo</span>
+          <span className="font-serif text-xl font-bold tracking-tight text-zinc-900">.in</span>
+        </button>
         <div className="w-16" />
       </nav>
 
-      <main className="max-w-lg mx-auto px-6 py-10">
+      <main className="max-w-lg mx-auto px-4 sm:px-6 py-8 sm:py-10">
         <h1 className="text-2xl font-bold text-zinc-900 mb-2">Find people</h1>
         <p className="text-zinc-400 text-sm mb-8">Search by username to find and visit profiles</p>
 

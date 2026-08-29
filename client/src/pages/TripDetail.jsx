@@ -619,8 +619,8 @@ function TripMap({ destination, markers = [], transportLegs = [] }) {
 
       {/* Explore filter buttons */}
       {mapReady && lat && lng && (
-        <div className="absolute top-4 left-4 z-10 flex flex-col gap-2">
-          <div className="flex gap-1.5">
+        <div className="absolute top-4 left-4 z-10 flex flex-col gap-2 max-w-[calc(100%-7rem)]">
+          <div className="flex flex-wrap gap-1.5">
             {EXPLORE_FILTERS.map((f) => (
               <button
                 key={f.id}
@@ -669,7 +669,7 @@ function TripMap({ destination, markers = [], transportLegs = [] }) {
 
       {/* Route panel — destination legs + transport legs */}
       {showRoutePanel && (
-        <div className="absolute top-16 right-4 z-10 bg-white rounded-2xl shadow-xl border border-zinc-100 w-[300px] overflow-hidden">
+        <div className="absolute top-16 right-4 z-10 bg-white rounded-2xl shadow-xl border border-zinc-100 w-[calc(100vw-2rem)] max-w-[300px] overflow-hidden">
           {/* Panel header */}
           <div className="px-4 py-3 bg-zinc-900 flex items-center justify-between">
             <div>
@@ -1041,6 +1041,7 @@ export default function TripDetail() {
   const [showInvite, setShowInvite] = useState(false);
   const [showDateModal, setShowDateModal] = useState(false);
   const [mapMounted, setMapMounted] = useState(false);
+  const [mobileMapView, setMobileMapView] = useState(false); // mobile: toggle list vs map on Plan tab
   const [itineraryItems, setItineraryItems] = useState([]);
 
   const fetchTrip = () => {
@@ -1071,6 +1072,7 @@ export default function TripDetail() {
 
   const handleTabClick = (tab) => {
     setActiveTab(tab);
+    setMobileMapView(false); // always land on the list/panel first on mobile
     if (tab === "Plan") setMapMounted(true);
   };
 
@@ -1120,12 +1122,12 @@ export default function TripDetail() {
     }));
 
   return (
-    <div className="h-screen bg-white flex flex-col overflow-hidden">
+    <div className="h-[100dvh] bg-white flex flex-col overflow-hidden">
       {showInvite && <InviteModal tripId={id} onClose={() => setShowInvite(false)} onInvited={fetchTrip} />}
       {showDateModal && canEdit && <DateModal trip={trip} onClose={() => setShowDateModal(false)} onSave={handleSaveDates} />}
 
       {/* Top bar */}
-      <header className="flex items-center justify-between px-6 py-3 border-b border-zinc-100 flex-shrink-0">
+      <header className="flex items-center justify-between px-3 sm:px-6 py-3 border-b border-zinc-100 flex-shrink-0 gap-2">
         <div className="flex items-center gap-3 min-w-0">
           <button onClick={() => navigate("/dashboard")} className="text-zinc-400 hover:text-zinc-600 transition-colors flex-shrink-0">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
@@ -1174,7 +1176,7 @@ export default function TripDetail() {
       </header>
 
       {/* Tabs */}
-      <nav className="flex items-center px-6 border-b border-zinc-100 flex-shrink-0">
+      <nav className="flex items-center px-3 sm:px-6 border-b border-zinc-100 flex-shrink-0">
         {TABS.map((tab) => (
           <button key={tab} onClick={() => handleTabClick(tab)}
             className={`relative px-4 py-3 text-sm font-medium transition-colors ${activeTab === tab ? "text-rose-500" : "text-zinc-400 hover:text-zinc-600"}`}>
@@ -1193,7 +1195,7 @@ export default function TripDetail() {
         {activeTab !== "Explore" && (
           <>
             {/* Left panel */}
-            <div className="w-[420px] flex-shrink-0 border-r border-zinc-100 overflow-hidden">
+            <div className={`w-full md:w-[420px] flex-shrink-0 border-r border-zinc-100 overflow-hidden ${activeTab === "Plan" && mobileMapView ? "hidden md:block" : "block"}`}>
               {activeTab === "Plan" && (
                 <PlanTab trip={trip} canEdit={canEdit} isMember={isMember}
                   itineraryItems={itineraryItems} setItineraryItems={setItineraryItems} />
@@ -1203,7 +1205,7 @@ export default function TripDetail() {
             </div>
 
             {/* Right panel — trip map */}
-            <div className="flex-1 relative overflow-hidden">
+            <div className={`flex-1 relative overflow-hidden ${activeTab === "Plan" && mobileMapView ? "block" : "hidden md:block"}`}>
               <div className="absolute inset-0" style={{ display: mapMounted && isMember ? "block" : "none" }}>
                 {mapMounted && isMember && (
                   <TripMap
@@ -1254,6 +1256,26 @@ export default function TripDetail() {
           </>
         )}
       </div>
+
+      {/* Mobile-only: toggle between itinerary list and map on the Plan tab */}
+      {activeTab === "Plan" && isMember && (
+        <button
+          onClick={() => { setMobileMapView((v) => !v); setMapMounted(true); }}
+          className="md:hidden fixed bottom-5 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2 bg-zinc-900 text-white text-sm font-medium px-5 py-3 rounded-full shadow-xl active:scale-95 transition-transform"
+        >
+          {mobileMapView ? (
+            <>
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" /></svg>
+              List
+            </>
+          ) : (
+            <>
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" /></svg>
+              Map
+            </>
+          )}
+        </button>
+      )}
     </div>
   );
 }

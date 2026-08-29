@@ -1,9 +1,24 @@
 import express from "express";
 import { protect } from "../middleware/auth.js";
+import { cacheGet, cacheSet } from "../utils/cache.js";
 
 const router = express.Router();
 
 const GOOGLE_PLACES_BASE = "https://places.googleapis.com/v1";
+
+// Turn an upstream Google Places failure into an actionable, user-facing message.
+function upstreamMessage(status) {
+  if (status === 403)
+    return "Places search is unavailable: the Google API key is missing permission. In Google Cloud Console enable 'Places API (New)', enable billing, and ensure the key has no HTTP-referrer restriction (server-side calls need an unrestricted or IP-restricted key).";
+  if (status === 429)
+    return "Places search hit its rate limit. Please try again in a moment.";
+  return "Could not load places right now. Please try again.";
+}
+
+// Google Places responses are stable enough to cache; this cuts latency and
+// billed API calls dramatically for repeated searches of the same area.
+const SEARCH_TTL = 60 * 60;       // 1 hour
+const DETAILS_TTL = 6 * 60 * 60;  // 6 hours
 
 // ── CATEGORY → GOOGLE PLACE TYPES ────────────────────────────
 const CATEGORY_TYPES = {
@@ -171,9 +186,11 @@ router.get("/search", protect, async (req, res) => {
   try {
     const apiKey = process.env.GOOGLE_PLACES_KEY;
     if (!apiKey) {
-      return res.status(500).json({
+      // 200 + success:false so the SPA shows a message instead of a console error
+      return res.json({
         success: false,
-        message: "Google Places API key not configured. Add GOOGLE_PLACES_KEY to backend .env",
+        results: [],
+        message: "Places search is not configured. Add GOOGLE_PLACES_KEY to backend .env",
       });
     }
 
@@ -187,6 +204,11 @@ router.get("/search", protect, async (req, res) => {
 
     const includedTypes = CATEGORY_TYPES[kind] || CATEGORY_TYPES.sights;
     const radiusM = Math.min(parseInt(radius) || 3000, 50000);
+
+    // Round coordinates so nearby requests share a cache entry
+    const cacheKey = `explore:search:${kind}:${lat.toFixed(3)}:${lng.toFixed(3)}:${radiusM}:${query || ""}`;
+    const cached = await cacheGet(cacheKey);
+    if (cached) return res.json({ success: true, results: cached, cached: true });
 
     const body = {
       includedTypes,
@@ -216,10 +238,11 @@ router.get("/search", protect, async (req, res) => {
     if (!response.ok) {
       const err = await response.text();
       console.error("[Google Places Search Error]", response.status, err);
-      return res.status(502).json({
+      // 200 + success:false: the SPA renders the message cleanly (no console 502 spam).
+      return res.json({
         success: false,
-        message: "Could not load places. Please try again.",
-        debug: process.env.NODE_ENV === "development" ? err : undefined,
+        results: [],
+        message: upstreamMessage(response.status),
       });
     }
 
@@ -228,12 +251,14 @@ router.get("/search", protect, async (req, res) => {
       .map(p => normalizePlace(p, lat, lng))
       .filter(p => p.name && p.lat && p.lng);
 
+    await cacheSet(cacheKey, results, SEARCH_TTL);
     res.json({ success: true, results });
   } catch (err) {
     console.error("[Explore Search Error]", err.message);
-    res.status(502).json({
+    res.json({
       success: false,
-      message: "Could not load places. Please try again.",
+      results: [],
+      message: "Could not load places right now. Please try again.",
     });
   }
 });
@@ -243,10 +268,14 @@ router.get("/search", protect, async (req, res) => {
 router.get("/details/:placeId", protect, async (req, res) => {
   try {
     const apiKey = process.env.GOOGLE_PLACES_KEY;
-    if (!apiKey) return res.status(500).json({ success: false, message: "API key not configured" });
+    if (!apiKey) return res.json({ success: false, message: "Places details not configured." });
 
     const { placeId } = req.params;
     const { refLat, refLng } = req.query;
+
+    const cacheKey = `explore:details:${placeId}`;
+    const cached = await cacheGet(cacheKey);
+    if (cached) return res.json({ success: true, place: cached, cached: true });
 
     const response = await fetch(`${GOOGLE_PLACES_BASE}/places/${placeId}`, {
       headers: {
@@ -259,15 +288,17 @@ router.get("/details/:placeId", protect, async (req, res) => {
     if (!response.ok) {
       const err = await response.text();
       console.error("[Google Places Details Error]", response.status, err);
-      return res.status(502).json({ success: false, message: "Could not load place details." });
+      // 200 + success:false — the detail view keeps its list data and doesn't error
+      return res.json({ success: false, message: upstreamMessage(response.status) });
     }
 
     const p = await response.json();
     const place = normalizePlace(p, parseFloat(refLat) || null, parseFloat(refLng) || null);
+    await cacheSet(cacheKey, place, DETAILS_TTL);
     res.json({ success: true, place });
   } catch (err) {
     console.error("[Explore Details Error]", err.message);
-    res.status(502).json({ success: false, message: "Could not load place details." });
+    res.json({ success: false, message: "Could not load place details right now." });
   }
 });
 

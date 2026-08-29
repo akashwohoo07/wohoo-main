@@ -2,7 +2,8 @@ import crypto from "crypto";
 import Trip from "../models/Trip.js";
 import Invitation from "../models/Invitation.js";
 import User from "../models/User.js";
-import { sendInviteEmail } from "../utils/email.js";
+import { dispatchEmail, JOB_INVITE } from "../queues/emailQueue.js";
+import { analyticsReadPreference } from "../config/readPreference.js";
 
 // ── CREATE TRIP ───────────────────────────────────────────────
 export const createTrip = async (req, res, next) => {
@@ -35,9 +36,12 @@ export const getMyTrips = async (req, res, next) => {
     const trips = await Trip.find({ "members.user": req.user._id })
       .populate("members.user", "name avatar email")
       .populate("owner", "name avatar")
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .read(analyticsReadPreference()); // dashboard tolerates slight replica lag
 
-    await Trip.syncStatuses(trips);
+    // Compute display status in memory — no DB write. The scheduled job keeps
+    // the stored status eventually consistent.
+    Trip.applyComputedStatus(trips);
 
     const upcoming = trips.filter((t) => t.status === "upcoming" || t.status === "ongoing");
     const past = trips.filter((t) => t.status === "past");
@@ -203,9 +207,10 @@ export const inviteMember = async (req, res, next) => {
       expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
     });
 
-    // Send invite email
+    // Queue the invite email — offloaded to the worker so a slow/failing email
+    // provider never blocks or fails this response.
     try {
-      await sendInviteEmail({
+      await dispatchEmail(JOB_INVITE, {
         toEmail: email,
         inviterName: req.user.name,
         tripName: trip.name,
@@ -215,7 +220,7 @@ export const inviteMember = async (req, res, next) => {
         role,
       });
     } catch (emailErr) {
-      console.error("Email failed:", emailErr.message);
+      console.error("Email dispatch failed:", emailErr.message);
     }
 
     console.log(`📧 Invite link: ${process.env.CLIENT_URL}/invite/${token}`);

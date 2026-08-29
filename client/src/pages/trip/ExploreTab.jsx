@@ -609,6 +609,7 @@ export default function ExploreTab({ trip, isMember, onAddToItinerary }) {
   const [addedIds, setAddedIds] = useState(new Set());
   const [cityInput, setCityInput] = useState(trip.destination?.name || "");
   const [cityLabel, setCityLabel] = useState(trip.destination?.name || "");
+  const [mobileMapView, setMobileMapView] = useState(false); // mobile: toggle list vs map
   const [searchCoords, setSearchCoords] = useState(
     trip.destination?.coordinates?.lat
       ? { lat: trip.destination.coordinates.lat, lng: trip.destination.coordinates.lng }
@@ -736,15 +737,15 @@ export default function ExploreTab({ trip, isMember, onAddToItinerary }) {
   const mapPlaces = selectedPlace ? [selectedPlace] : places;
 
   return (
-    <div className="h-full flex overflow-hidden w-full">
+    <div className="h-full flex flex-col md:flex-row overflow-hidden w-full">
 
-      {/* ── Category sidebar ── */}
-      <div className="w-[72px] flex-shrink-0 border-r border-zinc-100 flex flex-col items-center py-4 gap-1 bg-white">
+      {/* ── Category sidebar (vertical on desktop, horizontal scroll on mobile) ── */}
+      <div className="flex md:flex-col md:w-[72px] flex-shrink-0 border-b md:border-b-0 md:border-r border-zinc-100 md:items-center py-2 md:py-4 gap-1 bg-white overflow-x-auto md:overflow-visible">
         {Object.entries(CATEGORIES).map(([key, c]) => (
           <button
             key={key}
             onClick={() => handleCategoryChange(key)}
-            className={`flex flex-col items-center gap-1 w-full px-1 py-3 rounded-xl transition-all ${
+            className={`flex flex-col items-center gap-1 flex-shrink-0 md:w-full px-4 md:px-1 py-2 md:py-3 rounded-xl transition-all ${
               activeCategory === key
                 ? "bg-rose-50 text-rose-600"
                 : "text-zinc-400 hover:text-zinc-600 hover:bg-zinc-50"
@@ -757,7 +758,7 @@ export default function ExploreTab({ trip, isMember, onAddToItinerary }) {
       </div>
 
       {/* ── List / Detail panel ── */}
-      <div className="w-[360px] flex-shrink-0 flex flex-col overflow-hidden border-r border-zinc-100">
+      <div className={`w-full md:w-[360px] flex-1 md:flex-none flex-shrink-0 flex-col overflow-hidden border-r border-zinc-100 ${mobileMapView ? "hidden md:flex" : "flex"}`}>
         {selectedPlace ? (
           <PlaceDetail
             place={selectedPlace}
@@ -926,7 +927,7 @@ export default function ExploreTab({ trip, isMember, onAddToItinerary }) {
       </div>
 
       {/* ── Map panel ── */}
-      <div className="flex-1 relative overflow-hidden">
+      <div className={`flex-1 relative overflow-hidden ${mobileMapView ? "block" : "hidden md:block"}`}>
         {searchCoords && MAPBOX_TOKEN ? (
           <ExploreMap
             center={mapCenter}
@@ -948,6 +949,26 @@ export default function ExploreTab({ trip, isMember, onAddToItinerary }) {
           </div>
         )}
       </div>
+
+      {/* Mobile-only: toggle between the results list and the map */}
+      {!selectedPlace && (
+        <button
+          onClick={() => setMobileMapView((v) => !v)}
+          className="md:hidden fixed bottom-5 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2 bg-zinc-900 text-white text-sm font-medium px-5 py-3 rounded-full shadow-xl active:scale-95 transition-transform"
+        >
+          {mobileMapView ? (
+            <>
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" /></svg>
+              List
+            </>
+          ) : (
+            <>
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" /></svg>
+              Map
+            </>
+          )}
+        </button>
+      )}
     </div>
   );
 }

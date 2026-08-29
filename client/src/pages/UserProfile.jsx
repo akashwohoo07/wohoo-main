@@ -9,7 +9,7 @@ function Skeleton({ className }) {
 
 function ProfileSkeleton() {
   return (
-    <div className="max-w-3xl mx-auto px-8 py-12">
+    <div className="max-w-3xl mx-auto px-4 sm:px-8 py-8 sm:py-12">
       <div className="flex items-start justify-between mb-8">
         <div className="flex items-center gap-5">
           <Skeleton className="w-20 h-20 rounded-full" />
@@ -231,12 +231,15 @@ export default function UserProfile() {
   if (loading) {
     return (
       <div className="min-h-screen bg-white">
-        <nav className="flex items-center justify-between px-8 py-4 border-b border-zinc-100">
+        <nav className="flex items-center justify-between px-4 sm:px-8 py-4 border-b border-zinc-100">
           <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-sm text-zinc-400">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
             Back
           </button>
-          <div className="w-8 h-8 bg-rose-500 rounded-lg" />
+          <span className="flex items-baseline leading-none">
+            <span className="font-serif text-xl font-bold tracking-tight bg-gradient-to-br from-[#F9A8D4] to-[#ec4899] bg-clip-text text-transparent">Wohoo</span>
+            <span className="font-serif text-xl font-bold tracking-tight text-zinc-900">.in</span>
+          </span>
           <div className="w-16" />
         </nav>
         <ProfileSkeleton />
@@ -270,22 +273,21 @@ export default function UserProfile() {
         <UserListModal title={modal} userId={profile._id} type={modal} onClose={() => setModal(null)} />
       )}
 
-      <nav className="flex items-center justify-between px-8 py-4 border-b border-zinc-100 sticky top-0 bg-white/90 backdrop-blur-sm z-10">
+      <nav className="flex items-center justify-between px-4 sm:px-8 py-4 border-b border-zinc-100 sticky top-0 bg-white/90 backdrop-blur-sm z-10">
         <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-sm text-zinc-400 hover:text-zinc-600 transition-colors">
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
           Back
         </button>
-        <div className="w-8 h-8 bg-rose-500 rounded-lg flex items-center justify-center cursor-pointer" onClick={() => navigate("/dashboard")}>
-          <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 004 0 2 2 0 012-2h1.064" />
-          </svg>
-        </div>
+        <button className="flex items-baseline leading-none cursor-pointer" onClick={() => navigate("/dashboard")} aria-label="Wohoo.in home">
+          <span className="font-serif text-xl font-bold tracking-tight bg-gradient-to-br from-[#F9A8D4] to-[#ec4899] bg-clip-text text-transparent">Wohoo</span>
+          <span className="font-serif text-xl font-bold tracking-tight text-zinc-900">.in</span>
+        </button>
         <div className="w-16" />
       </nav>
 
-      <main className="max-w-3xl mx-auto px-8 py-12">
-        <div className="flex items-start justify-between mb-8 gap-4">
-          <div className="flex items-center gap-5">
+      <main className="max-w-3xl mx-auto px-4 sm:px-8 py-8 sm:py-12">
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between mb-8 gap-4">
+          <div className="flex items-center gap-4 sm:gap-5">
             <div className="w-20 h-20 rounded-full bg-rose-200 flex items-center justify-center overflow-hidden flex-shrink-0 ring-4 ring-rose-100">
               {profile?.avatar
                 ? <img src={profile.avatar} className="w-full h-full object-cover" alt={profile.name} />

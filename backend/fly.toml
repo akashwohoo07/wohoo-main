@@ -1,0 +1,44 @@
+# Fly.io config — Wohoo backend (API + worker).
+# Prod app name is "wohoo-api"; the beta deploy overrides with --app wohoo-api-beta.
+# Two process groups run from one image:
+#   • app    → the HTTP API (scales to zero when idle = pay-as-you-go)
+#   • worker → BullMQ background jobs (email + scheduled maintenance)
+app = "wohoo-api"
+primary_region = "sin"   # Singapore — closest available to India (bom/Mumbai deprecated)
+
+[build]
+  dockerfile = "Dockerfile"
+
+[processes]
+  app = "node src/server.js"
+  worker = "node src/workers/index.js"
+
+[env]
+  NODE_ENV = "production"
+  PORT = "8000"
+
+# HTTP routing applies only to the "app" process
+[http_service]
+  internal_port = 8000
+  force_https = true
+  auto_stop_machines = true      # scale to zero when idle (pay-as-you-go)
+  auto_start_machines = true     # wake on incoming request (~1–2s cold start)
+  min_machines_running = 0       # set to 1 for prod once cold starts bother users
+  processes = ["app"]
+
+  [http_service.concurrency]
+    type = "requests"
+    hard_limit = 250
+    soft_limit = 200
+
+  # Health check hits the existing GET /health endpoint
+  [[http_service.checks]]
+    interval = "15s"
+    timeout = "3s"
+    grace_period = "10s"
+    method = "GET"
+    path = "/health"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"

@@ -1,6 +1,7 @@
 import Follow from "../models/Follow.js";
 import User from "../models/User.js";
 import mongoose from "mongoose";
+import { analyticsReadPreference } from "../config/readPreference.js";
 
 // ── FOLLOW ────────────────────────────────────────────────────
 export const followUser = async (req, res, next) => {
@@ -123,18 +124,25 @@ export const getFollowers = async (req, res, next) => {
       return res.status(400).json({ success: false, message: "Invalid user ID" });
     }
 
+    // Cursor by _id (ObjectId is monotonic + unique) — avoids the duplicate/skip
+    // bug of a non-unique createdAt cursor, and page size is capped to bound cost.
+    const pageSize = Math.min(parseInt(limit) || 20, 50);
     const query = { following: userId };
-    if (cursor) query.createdAt = { $lt: new Date(cursor) };
+    if (cursor && mongoose.Types.ObjectId.isValid(cursor)) {
+      query._id = { $lt: new mongoose.Types.ObjectId(cursor) };
+    }
 
     const follows = await Follow.find(query)
-      .sort({ createdAt: -1 })
-      .limit(parseInt(limit) + 1)
-      .populate("follower", "name username avatar followersCount followingCount");
+      .sort({ _id: -1 })
+      .limit(pageSize + 1)
+      .populate("follower", "name username avatar followersCount followingCount")
+      .read(analyticsReadPreference())
+      .lean();
 
-    const hasMore = follows.length > parseInt(limit);
+    const hasMore = follows.length > pageSize;
     if (hasMore) follows.pop();
 
-    const nextCursor = hasMore ? follows[follows.length - 1].createdAt : null;
+    const nextCursor = hasMore ? follows[follows.length - 1]._id : null;
 
     res.json({
       success: true,
@@ -157,18 +165,23 @@ export const getFollowing = async (req, res, next) => {
       return res.status(400).json({ success: false, message: "Invalid user ID" });
     }
 
+    const pageSize = Math.min(parseInt(limit) || 20, 50);
     const query = { follower: userId };
-    if (cursor) query.createdAt = { $lt: new Date(cursor) };
+    if (cursor && mongoose.Types.ObjectId.isValid(cursor)) {
+      query._id = { $lt: new mongoose.Types.ObjectId(cursor) };
+    }
 
     const follows = await Follow.find(query)
-      .sort({ createdAt: -1 })
-      .limit(parseInt(limit) + 1)
-      .populate("following", "name username avatar followersCount followingCount");
+      .sort({ _id: -1 })
+      .limit(pageSize + 1)
+      .populate("following", "name username avatar followersCount followingCount")
+      .read(analyticsReadPreference())
+      .lean();
 
-    const hasMore = follows.length > parseInt(limit);
+    const hasMore = follows.length > pageSize;
     if (hasMore) follows.pop();
 
-    const nextCursor = hasMore ? follows[follows.length - 1].createdAt : null;
+    const nextCursor = hasMore ? follows[follows.length - 1]._id : null;
 
     res.json({
       success: true,
@@ -193,9 +206,11 @@ export const getFollowStatus = async (req, res, next) => {
     const follow = await Follow.findOne({
       follower: req.user._id,
       following: userId,
-    });
+    }).lean();
 
-    const targetUser = await User.findById(userId).select("followersCount followingCount");
+    const targetUser = await User.findById(userId)
+      .select("followersCount followingCount")
+      .lean();
 
     res.json({
       success: true,

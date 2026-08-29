@@ -237,12 +237,11 @@ export default function CreateTrip() {
       {showCancelModal && <CancelModal onKeep={handleKeep} onDiscard={handleDiscard} />}
 
       {/* Top bar */}
-      <div className="flex items-center justify-between px-6 py-4 border-b border-zinc-100">
-        <div className="w-8 h-8 bg-rose-500 rounded-lg flex items-center justify-center">
-          <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 004 0 2 2 0 012-2h1.064" />
-          </svg>
-        </div>
+      <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-zinc-100">
+        <button onClick={() => navigate("/dashboard")} className="flex items-baseline leading-none" aria-label="Wohoo.in home">
+          <span className="font-serif text-xl font-bold tracking-tight bg-gradient-to-br from-[#F9A8D4] to-[#ec4899] bg-clip-text text-transparent">Wohoo</span>
+          <span className="font-serif text-xl font-bold tracking-tight text-zinc-900">.in</span>
+        </button>
         <div className="flex gap-2">
           {STEPS.map((_, i) => (
             <div key={i} className={`rounded-full transition-all duration-300 ${i === step ? "w-6 h-2.5 bg-rose-500" : i < step ? "w-2.5 h-2.5 bg-rose-300" : "w-2.5 h-2.5 bg-zinc-200"}`} />
@@ -256,7 +255,7 @@ export default function CreateTrip() {
 
       <div className="flex flex-1">
         {/* Left panel */}
-        <div className="flex-1 flex flex-col justify-center px-10 lg:px-16 py-12 max-w-xl">
+        <div className="flex-1 flex flex-col justify-center px-5 sm:px-10 lg:px-16 py-8 sm:py-12 max-w-xl w-full">
           {step > 0 && (
             <button onClick={back} className="flex items-center gap-1 text-sm text-zinc-400 hover:text-zinc-600 mb-10 transition-colors w-fit">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -270,7 +269,7 @@ export default function CreateTrip() {
           {step === 0 && (
             <div>
               <p className="text-xs font-semibold tracking-widest text-zinc-400 uppercase mb-4">Plan your trip</p>
-              <h2 className="text-4xl font-serif text-zinc-900 mb-8 leading-tight">{"What's your first destination?"}</h2>
+              <h2 className="text-3xl sm:text-4xl font-serif text-zinc-900 mb-8 leading-tight">{"What's your first destination?"}</h2>
               <div className="relative">
                 <input
                   type="text"
@@ -329,7 +328,7 @@ export default function CreateTrip() {
           {/* STEP 1 — Name */}
           {step === 1 && (
             <div>
-              <h2 className="text-4xl font-serif text-zinc-900 mb-8 leading-tight">{"Let's give your trip a name!"}</h2>
+              <h2 className="text-3xl sm:text-4xl font-serif text-zinc-900 mb-8 leading-tight">{"Let's give your trip a name!"}</h2>
               <input
                 type="text"
                 value={name}
@@ -351,7 +350,7 @@ export default function CreateTrip() {
           {/* STEP 2 — Dates */}
           {step === 2 && (
             <div>
-              <h2 className="text-4xl font-serif text-zinc-900 mb-2 leading-tight">
+              <h2 className="text-3xl sm:text-4xl font-serif text-zinc-900 mb-2 leading-tight">
                 When are you going{destination ? ` to ${destination.primaryName}` : ""}?
               </h2>
               <button
@@ -387,7 +386,7 @@ export default function CreateTrip() {
           {/* STEP 3 — Invite */}
           {step === 3 && (
             <div>
-              <h2 className="text-4xl font-serif text-zinc-900 mb-8 leading-tight">Invite your friends to collaborate!</h2>
+              <h2 className="text-3xl sm:text-4xl font-serif text-zinc-900 mb-8 leading-tight">Invite your friends to collaborate!</h2>
               <div className="flex gap-2 items-end mb-2">
                 <input type="email" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} onKeyDown={(e) => e.key === "Enter" && addInvitee()} placeholder="Enter an email address" className="flex-1 border-b-2 border-zinc-200 focus:border-rose-400 outline-none py-3 text-zinc-800 text-sm transition-colors bg-transparent" />
                 <button onClick={addInvitee} className="text-zinc-400 hover:text-rose-500 transition-colors pb-3">
@@ -434,7 +433,7 @@ export default function CreateTrip() {
           {/* STEP 4 — Confirm */}
           {step === 4 && (
             <div>
-              <h2 className="text-4xl font-serif text-zinc-900 mb-3 leading-tight">{"You're all set!"}</h2>
+              <h2 className="text-3xl sm:text-4xl font-serif text-zinc-900 mb-3 leading-tight">{"You're all set!"}</h2>
               <p className="text-zinc-400 text-sm mb-8">Review your trip before creating it.</p>
               <div className="space-y-1">
                 {[

@@ -62,32 +62,50 @@ tripSchema.pre("save", function () {
   if (computed) this.status = computed;
 });
 
-// `status` is only recalculated on save, so a trip nobody touches again will
-// keep showing its creation-time status forever (e.g. a finished trip stuck
-// under "upcoming"). Call this with any batch of trip docs fetched for
-// display to bring stale ones up to date and persist the correction.
-tripSchema.statics.syncStatuses = async function (trips) {
-  const stale = trips.filter((t) => {
+// Read-path helper: correct the status of already-fetched docs IN MEMORY for
+// display, without touching the database. Persistence is handled off the read
+// path by the scheduled syncAllStatuses() job.
+tripSchema.statics.applyComputedStatus = function (trips) {
+  for (const t of trips) {
     const computed = computeTripStatus(t.startDate, t.endDate);
-    if (!computed || computed === t.status) return false;
-    t.status = computed;
-    return true;
-  });
-
-  if (stale.length) {
-    await this.bulkWrite(
-      stale.map((t) => ({
-        updateOne: { filter: { _id: t._id }, update: { status: t.status } },
-      }))
-    );
+    if (computed) t.status = computed;
   }
-
   return trips;
+};
+
+// Maintenance job: bring every trip's stored `status` in line with the current
+// date using three bulk updates. `status` is otherwise only recomputed on save,
+// so a trip nobody edits would keep a stale status forever. Run on a schedule
+// (BullMQ repeatable job, every 15 min) instead of on the read path.
+// `$ne: null` also excludes missing fields, so trips without dates are skipped.
+tripSchema.statics.syncAllStatuses = async function () {
+  const now = new Date();
+  const [past, ongoing, upcoming] = await Promise.all([
+    this.updateMany(
+      { startDate: { $ne: null }, endDate: { $ne: null, $lt: now }, status: { $ne: "past" } },
+      { $set: { status: "past" } }
+    ),
+    this.updateMany(
+      { startDate: { $ne: null, $lte: now }, endDate: { $ne: null, $gte: now }, status: { $ne: "ongoing" } },
+      { $set: { status: "ongoing" } }
+    ),
+    this.updateMany(
+      { startDate: { $ne: null, $gt: now }, endDate: { $ne: null }, status: { $ne: "upcoming" } },
+      { $set: { status: "upcoming" } }
+    ),
+  ]);
+  return {
+    past: past.modifiedCount,
+    ongoing: ongoing.modifiedCount,
+    upcoming: upcoming.modifiedCount,
+  };
 };
 
 tripSchema.index({ "members.user": 1 });
 tripSchema.index({ owner: 1, status: 1 });
 tripSchema.index({ isPublic: 1, owner: 1 });
+// Supports the scheduled status-sync bulk queries
+tripSchema.index({ status: 1, startDate: 1, endDate: 1 });
 
-const Trip = mongoose.model("Trip", tripSchema);
+const Trip = mongoose.models.Trip || mongoose.model("Trip", tripSchema);
 export default Trip;
