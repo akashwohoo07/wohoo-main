@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
+import { Check, X, PartyPopper, TriangleAlert } from "lucide-react";
 import api from "../api/axios";
 import { useAuth } from "../context/AuthContext";
 
@@ -57,8 +58,8 @@ export default function SetUsername() {
     if (status === "checking") return <span className="text-zinc-400 text-xs">Checking...</span>;
     if (status === "short") return <span className="text-zinc-400 text-xs">Minimum 12 characters</span>;
     if (status === "invalid") return <span className="text-red-400 text-xs">Only letters and numbers allowed</span>;
-    if (status === "taken") return <span className="text-red-400 text-xs flex items-center gap-1"><span>✗</span> @{username} is taken</span>;
-    if (status === "available") return <span className="text-emerald-500 text-xs flex items-center gap-1"><span>✓</span> @{username} is available</span>;
+    if (status === "taken") return <span className="text-red-400 text-xs flex items-center gap-1"><X className="w-3 h-3" /> @{username} is taken</span>;
+    if (status === "available") return <span className="text-emerald-500 text-xs flex items-center gap-1"><Check className="w-3 h-3" /> @{username} is available</span>;
     return null;
   };
 
@@ -77,7 +78,7 @@ export default function SetUsername() {
 
         {success ? (
           <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-6 text-center">
-            <p className="text-2xl mb-2">🎉</p>
+            <PartyPopper className="w-8 h-8 text-emerald-500 mx-auto mb-2" strokeWidth={1.5} />
             <p className="font-semibold text-zinc-800">@{username} is yours!</p>
             <p className="text-sm text-zinc-400 mt-1">A confirmation email has been sent. Redirecting...</p>
           </div>
@@ -116,8 +117,8 @@ export default function SetUsername() {
               </div>
 
               <div className="bg-amber-50 border border-amber-100 rounded-xl p-3">
-                <p className="text-xs text-amber-700">
-                  ⚠️ Once set, you can only change your username after <strong>30 days</strong>.
+                <p className="text-xs text-amber-700 flex items-center gap-1.5">
+                  <TriangleAlert className="w-3.5 h-3.5 flex-shrink-0" /> <span>Once set, you can only change your username after <strong>30 days</strong>.</span>
                 </p>
               </div>
 

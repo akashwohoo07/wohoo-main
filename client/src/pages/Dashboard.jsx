@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { Plane, Compass, Heart } from "lucide-react";
 import api from "../api/axios";
 import { useAuth } from "../context/AuthContext";
 
@@ -120,7 +121,7 @@ function TripCard({ trip, currentUserId }) {
             )}
           </div>
 
-          {/* ✅ Switch at bottom right — owner only */}
+          {/* Switch at bottom right — owner only */}
           {isOwner && (
             <div onClick={(e) => e.stopPropagation()} className="flex-shrink-0 mt-0.5">
               <PrivacySwitch
@@ -236,14 +237,17 @@ export default function Dashboard() {
 
         <div className="hidden md:flex gap-8">
           {[
-            { label: "Trips", icon: "✈", active: true },
-            { label: "Discover", icon: "◎" },
-            { label: "Wishlist", icon: "♡" },
-          ].map((tab) => (
+            { label: "Trips", icon: Plane, active: true },
+            { label: "Discover", icon: Compass },
+            { label: "Wishlist", icon: Heart },
+          ].map((tab) => {
+            const TabIcon = tab.icon;
+            return (
             <button key={tab.label} className={`flex items-center gap-1.5 text-sm font-medium transition-colors ${tab.active ? "text-rose-500 border-b-2 border-rose-500 pb-1" : "text-zinc-400 hover:text-zinc-600"}`}>
-              <span>{tab.icon}</span> {tab.label}
+              <TabIcon className="w-4 h-4" /> {tab.label}
             </button>
-          ))}
+            );
+          })}
         </div>
 
         <div className="flex items-center gap-3 sm:gap-4">

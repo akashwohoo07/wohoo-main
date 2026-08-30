@@ -1,11 +1,13 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
+import { Plane, PlaneTakeoff, PlaneLanding, TrainFront, Bus, MapPin, Clock, Map as MapIcon, TriangleAlert, Frown, Pin } from "lucide-react";
 import api from "../api/axios";
 import { useAuth } from "../context/AuthContext";
 import InviteModal from "../components/InviteModal";
 import ExploreTab from "./trip/ExploreTab";
 import PlanTab from "./trip/PlanTab";
 import { NotesTab, FilesTab } from "./trip/TripTabs";
+import { KIND_ICON, iconSvg } from "../lib/icons.jsx";
 
 // ── Skeleton ──────────────────────────────────────────────────
 function Skeleton({ className }) {
@@ -104,9 +106,9 @@ function TripMap({ destination, markers = [], transportLegs = [] }) {
   const token = import.meta.env.VITE_MAPBOX_TOKEN;
 
   const EXPLORE_FILTERS = [
-    { id: "stays",      label: "Stays",      icon: "🛏️", color: "#3b82f6" },
-    { id: "activities", label: "Activities", icon: "🎯", color: "#8b5cf6" },
-    { id: "eats",       label: "Eats",       icon: "🍽️", color: "#f59e0b" },
+    { id: "stays",      label: "Stays",      icon: KIND_ICON.stays,      color: "#3b82f6" },
+    { id: "activities", label: "Activities", icon: KIND_ICON.activities, color: "#8b5cf6" },
+    { id: "eats",       label: "Eats",       icon: KIND_ICON.eats,       color: "#f59e0b" },
   ];
 
   const lat = destination?.coordinates?.lat;
@@ -323,14 +325,14 @@ function TripMap({ destination, markers = [], transportLegs = [] }) {
       });
 
       // Endpoint markers (airport / station icons)
-      const fromIcon = isFlight ? "✈" : isTrain ? "🚂" : "●";
-      const toIcon = isFlight ? "🛬" : isTrain ? "🚉" : "●";
+      const fromIcon = iconSvg(isFlight ? PlaneTakeoff : isTrain ? TrainFront : MapPin, { size: 15, color: "white" });
+      const toIcon = iconSvg(isFlight ? PlaneLanding : isTrain ? TrainFront : MapPin, { size: 15, color: "white" });
 
       const fromEl = createTransportEndpointEl(fromIcon, color);
       const fromPopupHtml = `<div style="font-family:sans-serif;padding:6px 8px;min-width:120px;">
         <div style="font-size:10px;font-weight:700;color:#6b7280;margin-bottom:2px;">${isFlight ? "DEPARTURE" : "FROM"}</div>
         <div style="font-size:13px;font-weight:700;color:#18181b;">${leg.fromStation || "—"}</div>
-        ${leg.time ? `<div style="font-size:11px;color:#a1a1aa;margin-top:2px;">🕐 ${leg.time}</div>` : ""}
+        ${leg.time ? `<div style="font-size:11px;color:#a1a1aa;margin-top:2px;">${iconSvg(Clock, { size: 11, color: "#a1a1aa" })} ${leg.time}</div>` : ""}
       </div>`;
       new mapboxgl.Marker({ element: fromEl, anchor: "bottom" })
         .setLngLat([leg.fromLng, leg.fromLat])
@@ -345,7 +347,7 @@ function TripMap({ destination, markers = [], transportLegs = [] }) {
       const toPopupHtml = `<div style="font-family:sans-serif;padding:6px 8px;min-width:120px;">
         <div style="font-size:10px;font-weight:700;color:#6b7280;margin-bottom:2px;">${isFlight ? "ARRIVAL" : "TO"}</div>
         <div style="font-size:13px;font-weight:700;color:#18181b;">${leg.toStation || "—"}</div>
-        ${leg.endTime ? `<div style="font-size:11px;color:#a1a1aa;margin-top:2px;">🕐 ${leg.endTime}</div>` : ""}
+        ${leg.endTime ? `<div style="font-size:11px;color:#a1a1aa;margin-top:2px;">${iconSvg(Clock, { size: 11, color: "#a1a1aa" })} ${leg.endTime}</div>` : ""}
       </div>`;
       const toMarker = new mapboxgl.Marker({ element: toEl, anchor: "bottom" })
         .setLngLat([leg.toLng, leg.toLat])
@@ -437,7 +439,7 @@ function TripMap({ destination, markers = [], transportLegs = [] }) {
               border:2px solid white;
               box-shadow:0 2px 8px rgba(0,0,0,0.25);
               white-space:nowrap;
-            ">${place.rating ? parseFloat(place.rating).toFixed(1)+"★" : filterMeta?.icon || "•"}</div>
+            ">${place.rating ? parseFloat(place.rating).toFixed(1)+"★" : iconSvg(filterMeta?.icon || Pin, { size: 11, color: "white" })}</div>
             <div style="width:2px;height:4px;background:${color};margin:0 auto;border-radius:0 0 2px 2px;"></div>
           `;
 
@@ -452,7 +454,7 @@ function TripMap({ destination, markers = [], transportLegs = [] }) {
                     ${place.rating ? `<span style="background:${parseFloat(place.rating)>=4?"#22c55e":"#f59e0b"};color:white;font-size:11px;font-weight:700;padding:2px 6px;border-radius:6px;">${parseFloat(place.rating).toFixed(1)}★</span>` : ""}
                     ${place.isOpen !== null ? `<span style="font-size:10px;font-weight:600;${place.isOpen ? "color:#16a34a" : "color:#dc2626"}">${place.isOpen ? "● Open" : "● Closed"}</span>` : ""}
                   </div>
-                  ${place.address ? `<p style="font-size:10px;color:#a1a1aa;margin:5px 0 0;">📍 ${place.address}</p>` : ""}
+                  ${place.address ? `<p style="font-size:10px;color:#a1a1aa;margin:5px 0 0;">${iconSvg(MapPin, { size: 10, color: "#a1a1aa" })} ${place.address}</p>` : ""}
                 </div>
               </div>
             `);
@@ -589,14 +591,14 @@ function TripMap({ destination, markers = [], transportLegs = [] }) {
 
   if (!token) return (
     <div className="w-full h-full flex flex-col items-center justify-center gap-3 bg-zinc-50">
-      <div className="text-4xl">🗺️</div>
+      <MapIcon className="w-10 h-10 text-zinc-300" strokeWidth={1.5} />
       <p className="text-sm text-zinc-500 font-medium">Map not configured</p>
       <p className="text-xs text-zinc-400">Add VITE_MAPBOX_TOKEN to client/.env</p>
     </div>
   );
   if (mapError) return (
     <div className="w-full h-full flex flex-col items-center justify-center gap-3 bg-zinc-50">
-      <div className="text-4xl">⚠️</div>
+      <TriangleAlert className="w-10 h-10 text-zinc-300" strokeWidth={1.5} />
       <p className="text-sm text-zinc-500">Failed to load map</p>
     </div>
   );
@@ -635,7 +637,7 @@ function TripMap({ destination, markers = [], transportLegs = [] }) {
                 {exploreLoading && exploreFilter === f.id ? (
                   <div className="w-3 h-3 border-2 border-white/40 border-t-white rounded-full animate-spin"/>
                 ) : (
-                  <span>{f.icon}</span>
+                  <f.icon className="w-3.5 h-3.5" />
                 )}
                 {f.label}
               </button>
@@ -791,7 +793,7 @@ function TripMap({ destination, markers = [], transportLegs = [] }) {
                   {transportLegs.map((leg, i) => {
                     if (!leg.fromLat || !leg.toLat) return null;
                     const tm = leg.transportMode;
-                    const icon = tm === "flight" ? "✈️" : tm === "train" ? "🚂" : "🚌";
+                    const LegIcon = tm === "flight" ? Plane : tm === "train" ? TrainFront : Bus;
                     const color = leg.color || LEG_COLORS[i % LEG_COLORS.length];
                     const thisOn = transportLegVisible === null || transportLegVisible.has(i);
                     const distKm = gcDist(leg.fromLat, leg.fromLng, leg.toLat, leg.toLng);
@@ -813,9 +815,9 @@ function TripMap({ destination, markers = [], transportLegs = [] }) {
                         <div className="flex items-center gap-3">
                           {/* Icon + color dot */}
                           <div className="flex flex-col items-center flex-shrink-0">
-                            <div className="w-7 h-7 rounded-full flex items-center justify-center text-sm border-2 border-white shadow-sm"
+                            <div className="w-7 h-7 rounded-full flex items-center justify-center border-2 border-white shadow-sm"
                               style={{ background: color + "22", borderColor: color }}>
-                              {icon}
+                              <LegIcon className="w-3.5 h-3.5" style={{ color }} />
                             </div>
                           </div>
                           <div className="flex-1 min-w-0">
@@ -881,10 +883,8 @@ function TripMap({ destination, markers = [], transportLegs = [] }) {
           <div className="p-4">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
-                <span className="text-xl">
-                  {selectedTransport.leg.transportMode === "flight" ? "✈️" :
-                   selectedTransport.leg.transportMode === "train" ? "🚂" : "🚌"}
-                </span>
+                {selectedTransport.leg.transportMode === "flight" ? <Plane className="w-5 h-5 text-zinc-700" /> :
+                 selectedTransport.leg.transportMode === "train" ? <TrainFront className="w-5 h-5 text-zinc-700" /> : <Bus className="w-5 h-5 text-zinc-700" />}
                 <div>
                   <p className="text-xs font-bold text-zinc-800 leading-tight">
                     {selectedTransport.leg.title || selectedTransport.leg.transportMode}
@@ -1093,7 +1093,7 @@ export default function TripDetail() {
   if (error) {
     return (
       <div className="min-h-screen bg-white flex flex-col items-center justify-center gap-4">
-        <div className="text-4xl">😕</div>
+        <Frown className="w-12 h-12 text-zinc-300" strokeWidth={1.5} />
         <p className="text-zinc-600 font-medium">{error}</p>
         <Link to="/dashboard" className="text-sm text-rose-500 hover:text-rose-600">← Back to Dashboard</Link>
       </div>
@@ -1231,7 +1231,7 @@ export default function TripDetail() {
                       {activeTab === "Plan" && !isMember ? "Map is private" : "Switch to Plan to view map"}
                     </p>
                     {trip.destination?.name && (
-                      <p className="text-zinc-400 text-xs mt-1">📍 {trip.destination.fullLabel || trip.destination.name}</p>
+                      <p className="text-zinc-400 text-xs mt-1 flex items-center justify-center gap-1"><MapPin className="w-3 h-3" /> {trip.destination.fullLabel || trip.destination.name}</p>
                     )}
                   </div>
                   {isMember && trip.destination?.name && (

@@ -1,6 +1,7 @@
 // ─────────────────────────────────────────────────────────────
 // CONSTANTS — shared across PlanTab components
 // ─────────────────────────────────────────────────────────────
+import { TRANSPORT_ICON, TYPE_ICON } from "../../lib/icons.jsx";
 
 export const CURRENCIES = [
     { code: "INR", symbol: "₹" }, { code: "USD", symbol: "$" },
@@ -11,26 +12,26 @@ export const CURRENCIES = [
   ];
   
   export const TRANSPORT_MODES = [
-    { id: "flight", label: "Flight",    icon: "✈️" },
-    { id: "train",  label: "Train",     icon: "🚂" },
-    { id: "bus",    label: "Bus",       icon: "🚌" },
-    { id: "car",    label: "Car / Cab", icon: "🚗" },
-    { id: "ferry",  label: "Ferry",     icon: "⛴️" },
-    { id: "metro",  label: "Metro",     icon: "🚇" },
-    { id: "bike",   label: "Bike",      icon: "🏍️" },
-    { id: "walk",   label: "Walk",      icon: "🚶" },
+    { id: "flight", label: "Flight",    icon: TRANSPORT_ICON.flight },
+    { id: "train",  label: "Train",     icon: TRANSPORT_ICON.train },
+    { id: "bus",    label: "Bus",       icon: TRANSPORT_ICON.bus },
+    { id: "car",    label: "Car / Cab", icon: TRANSPORT_ICON.car },
+    { id: "ferry",  label: "Ferry",     icon: TRANSPORT_ICON.ferry },
+    { id: "metro",  label: "Metro",     icon: TRANSPORT_ICON.metro },
+    { id: "bike",   label: "Bike",      icon: TRANSPORT_ICON.bike },
+    { id: "walk",   label: "Walk",      icon: TRANSPORT_ICON.walk },
   ];
-  
+
   export const ADD_CATEGORIES = [
-    { type: "destination", label: "Destination",   icon: "📍", color: "text-rose-500 bg-rose-50 border-rose-200",      desc: "City, town or place" },
-    { type: "hotel",       label: "Hotel / Stay",  icon: "🏨", color: "text-blue-500 bg-blue-50 border-blue-200",      desc: "Accommodation" },
-    { type: "restaurant",  label: "Restaurant",    icon: "🍽️", color: "text-amber-500 bg-amber-50 border-amber-200",   desc: "Food & dining" },
-    { type: "activity",    label: "Activity",      icon: "🎯", color: "text-violet-500 bg-violet-50 border-violet-200",desc: "Things to do" },
-    { type: "transport",   label: "Transport",     icon: "🚆", color: "text-emerald-500 bg-emerald-50 border-emerald-200", desc: "Getting around" },
-    { type: "place",       label: "Place / Sight", icon: "🏛️", color: "text-cyan-500 bg-cyan-50 border-cyan-200",     desc: "Museums, parks, sights" },
-    { type: "shopping",    label: "Shopping",      icon: "🛍️", color: "text-pink-500 bg-pink-50 border-pink-200",     desc: "Markets & shops" },
-    { type: "note",        label: "Note",          icon: "📝", color: "text-zinc-500 bg-zinc-50 border-zinc-200",      desc: "Free text note" },
-    { type: "other",       label: "Other",         icon: "📌", color: "text-orange-500 bg-orange-50 border-orange-200",desc: "Anything else" },
+    { type: "destination", label: "Destination",   icon: TYPE_ICON.destination, color: "text-rose-500 bg-rose-50 border-rose-200",      desc: "City, town or place" },
+    { type: "hotel",       label: "Hotel / Stay",  icon: TYPE_ICON.hotel,       color: "text-blue-500 bg-blue-50 border-blue-200",      desc: "Accommodation" },
+    { type: "restaurant",  label: "Restaurant",    icon: TYPE_ICON.restaurant,  color: "text-amber-500 bg-amber-50 border-amber-200",   desc: "Food & dining" },
+    { type: "activity",    label: "Activity",      icon: TYPE_ICON.activity,    color: "text-violet-500 bg-violet-50 border-violet-200",desc: "Things to do" },
+    { type: "transport",   label: "Transport",     icon: TYPE_ICON.transport,   color: "text-emerald-500 bg-emerald-50 border-emerald-200", desc: "Getting around" },
+    { type: "place",       label: "Place / Sight", icon: TYPE_ICON.place,       color: "text-cyan-500 bg-cyan-50 border-cyan-200",     desc: "Museums, parks, sights" },
+    { type: "shopping",    label: "Shopping",      icon: TYPE_ICON.shopping,    color: "text-pink-500 bg-pink-50 border-pink-200",     desc: "Markets & shops" },
+    { type: "note",        label: "Note",          icon: TYPE_ICON.note,        color: "text-zinc-500 bg-zinc-50 border-zinc-200",      desc: "Free text note" },
+    { type: "other",       label: "Other",         icon: TYPE_ICON.other,       color: "text-orange-500 bg-orange-50 border-orange-200",desc: "Anything else" },
   ];
   
   export const TYPE_META = Object.fromEntries(ADD_CATEGORIES.map((c) => [c.type, c]));

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Check, Eye, Pencil } from "lucide-react";
 import api from "../api/axios";
 export default function InviteModal({ tripId, onClose, onInvited }) {
   const [email, setEmail] = useState("");
@@ -15,7 +16,7 @@ export default function InviteModal({ tripId, onClose, onInvited }) {
     setSuccess("");
     try {
       await api.post(`/trips/${tripId}/invite`, { email, role });
-      setSuccess(`Invite sent to ${email} ✓`);
+      setSuccess(`Invite sent to ${email}`);
       setEmail("");
       if (onInvited) onInvited();
     } catch (err) {
@@ -62,7 +63,7 @@ export default function InviteModal({ tripId, onClose, onInvited }) {
                     role === r ? "bg-rose-50 border-rose-300 text-rose-600 font-medium" : "border-zinc-200 text-zinc-400 hover:border-zinc-300"
                   }`}
                 >
-                  <div className="text-base mb-0.5">{r === "viewer" ? "👁" : "✏️"}</div>
+                  <div className="flex justify-center mb-0.5">{r === "viewer" ? <Eye className="w-4 h-4" /> : <Pencil className="w-4 h-4" />}</div>
                   <div className="capitalize">{r}</div>
                   <div className="text-zinc-400 text-xs mt-0.5 font-normal">
                     {r === "viewer" ? "Can view only" : "Can edit trip"}
@@ -73,7 +74,7 @@ export default function InviteModal({ tripId, onClose, onInvited }) {
           </div>
 
           {error && <p className="text-sm text-red-500">{error}</p>}
-          {success && <p className="text-sm text-emerald-600">{success}</p>}
+          {success && <p className="text-sm text-emerald-600 flex items-center gap-1.5"><Check className="w-4 h-4 flex-shrink-0" /> <span>{success}</span></p>}
 
           <button
             type="submit"

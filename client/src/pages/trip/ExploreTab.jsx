@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { MapPin, Lock, Frown, Map as MapIcon, Clock, Globe, Phone, Pin } from "lucide-react";
 import api from "../../api/axios";
+import { KIND_ICON, iconSvg, AMENITY_ICON } from "../../lib/icons.jsx";
 
 // ─────────────────────────────────────────────────────────────
 // CONSTANTS
@@ -8,10 +10,10 @@ import api from "../../api/axios";
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN;
 
 const CATEGORIES = {
-  stays:      { kind: "stays",      label: "Stays",      icon: "🛏️", color: "#3b82f6", itemType: "hotel"      },
-  activities: { kind: "activities", label: "Activities", icon: "🎯", color: "#8b5cf6", itemType: "activity"   },
-  eats:       { kind: "eats",       label: "Eats",       icon: "🍽️", color: "#f59e0b", itemType: "restaurant" },
-  sights:     { kind: "sights",     label: "Sights",     icon: "📸", color: "#10b981", itemType: "place"      },
+  stays:      { kind: "stays",      label: "Stays",      icon: KIND_ICON.stays,      color: "#3b82f6", itemType: "hotel"      },
+  activities: { kind: "activities", label: "Activities", icon: KIND_ICON.activities, color: "#8b5cf6", itemType: "activity"   },
+  eats:       { kind: "eats",       label: "Eats",       icon: KIND_ICON.eats,       color: "#f59e0b", itemType: "restaurant" },
+  sights:     { kind: "sights",     label: "Sights",     icon: KIND_ICON.sights,     color: "#10b981", itemType: "place"      },
 };
 
 const SORT_OPTIONS = [
@@ -109,7 +111,7 @@ function PhotoCarousel({ photos, name }) {
   if (!validPhotos.length) {
     return (
       <div className="w-full h-full bg-gradient-to-br from-zinc-100 to-zinc-200 flex items-center justify-center">
-        <span className="text-5xl opacity-10">📍</span>
+        <MapPin className="w-12 h-12 text-zinc-400 opacity-30" strokeWidth={1.5} />
       </div>
     );
   }
@@ -186,7 +188,7 @@ function PlaceCard({ place, onSelect, onAdd, isAdded, isHovered, onHover }) {
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-zinc-100 to-zinc-200">
-            <span className="text-4xl opacity-20">📍</span>
+            <MapPin className="w-10 h-10 text-zinc-400 opacity-40" strokeWidth={1.5} />
           </div>
         )}
 
@@ -321,7 +323,7 @@ function PlaceDetail({ place, onBack, onAdd, isAdded, refCoords }) {
 
           {/* Location */}
           {full.address && (
-            <InfoRow icon="📍" label="Location" color="bg-rose-50">
+            <InfoRow icon={<MapPin className="w-4 h-4 text-rose-500" />} label="Location" color="bg-rose-50">
               <p className="text-sm text-zinc-700">{full.address}</p>
               {full.distKm !== null && <p className="text-xs text-zinc-400 mt-0.5">{fmtDist(full.distKm)} from center</p>}
             </InfoRow>
@@ -329,7 +331,7 @@ function PlaceDetail({ place, onBack, onAdd, isAdded, refCoords }) {
 
           {/* Hours */}
           {full.hours && (
-            <InfoRow icon="🕐" label="Opening Hours" color="bg-amber-50">
+            <InfoRow icon={<Clock className="w-4 h-4 text-amber-500" />} label="Opening Hours" color="bg-amber-50">
               <p className={`text-xs font-semibold mb-1 ${full.isOpen ? "text-green-600" : "text-red-500"}`}>
                 {full.isOpen ? "Open now" : "Currently closed"}
               </p>
@@ -339,7 +341,7 @@ function PlaceDetail({ place, onBack, onAdd, isAdded, refCoords }) {
 
           {/* Website */}
           {full.website && (
-            <InfoRow icon="🌐" label="Website" color="bg-blue-50">
+            <InfoRow icon={<Globe className="w-4 h-4 text-blue-500" />} label="Website" color="bg-blue-50">
               <a
                 href={full.website.startsWith("http") ? full.website : `https://${full.website}`}
                 target="_blank" rel="noreferrer"
@@ -352,7 +354,7 @@ function PlaceDetail({ place, onBack, onAdd, isAdded, refCoords }) {
 
           {/* Phone */}
           {full.phone && (
-            <InfoRow icon="📞" label="Phone" color="bg-green-50">
+            <InfoRow icon={<Phone className="w-4 h-4 text-green-600" />} label="Phone" color="bg-green-50">
               <a href={`tel:${full.phone}`} className="text-sm text-blue-600 hover:text-blue-700">
                 {full.phone}
               </a>
@@ -364,12 +366,15 @@ function PlaceDetail({ place, onBack, onAdd, isAdded, refCoords }) {
             <div>
               <p className="text-xs font-bold text-zinc-400 uppercase tracking-wider mb-2">Highlights</p>
               <div className="flex flex-wrap gap-2">
-                {full.amenities.map((a) => (
+                {full.amenities.map((a) => {
+                  const AmenityIcon = AMENITY_ICON[a.key] || Pin;
+                  return (
                   <div key={a.label} className="flex items-center gap-1.5 bg-zinc-50 border border-zinc-100 rounded-full px-3 py-1.5">
-                    <span className="text-sm">{a.icon}</span>
+                    <AmenityIcon className="w-3.5 h-3.5 text-zinc-500" />
                     <span className="text-xs font-medium text-zinc-600">{a.label}</span>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}
@@ -519,7 +524,10 @@ function ExploreMap({ center, places, hoveredId, selectedPlace, onMarkerClick })
       if (isHovered || isSelected) el.style.transform = "scale(1.3)";
 
       const bg = isSelected ? "#ef4444" : "#1f2937";
-      const label = place.rating ? `${parseFloat(place.rating).toFixed(1)}★` : "📍";
+      // Rated places show the score with a star glyph; unrated show a clean pin icon.
+      const label = place.rating
+        ? `${parseFloat(place.rating).toFixed(1)}★`
+        : iconSvg(MapPin, { size: 12, color: "white" });
 
       el.innerHTML = `
         <div style="
@@ -553,7 +561,7 @@ function ExploreMap({ center, places, hoveredId, selectedPlace, onMarkerClick })
             <div style="font-family:-apple-system,sans-serif;width:240px;border-radius:16px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.15);">
               ${place.photo
                 ? `<img src="${place.photo}" style="width:100%;height:120px;object-fit:cover;" onerror="this.style.display='none'" />`
-                : `<div style="width:100%;height:80px;background:#f4f4f5;display:flex;align-items:center;justify-content:center;font-size:32px;opacity:0.3;">📍</div>`
+                : `<div style="width:100%;height:80px;background:#f4f4f5;display:flex;align-items:center;justify-content:center;opacity:0.3;">${iconSvg(MapPin, { size: 28, color: "#71717a" })}</div>`
               }
               <div style="padding:10px 12px 12px;">
                 <p style="font-size:13px;font-weight:700;color:#18181b;margin:0 0 3px;line-height:1.3;">${place.name}</p>
@@ -711,10 +719,10 @@ export default function ExploreTab({ trip, isMember, onAddToItinerary }) {
       currency: "INR",
       notes: [
         place.description || "",
-        place.hours ? `🕐 Hours: ${place.hours.split("\n").slice(0,3).join(" | ")}` : "",
-        place.website ? `🌐 ${place.website}` : "",
-        place.phone ? `📞 ${place.phone}` : "",
-        place.rating ? `⭐ ${place.rating} (${place.reviewCount} reviews)` : "",
+        place.hours ? `Hours: ${place.hours.split("\n").slice(0,3).join(" | ")}` : "",
+        place.website ? `Website: ${place.website}` : "",
+        place.phone ? `Phone: ${place.phone}` : "",
+        place.rating ? `Rating: ${place.rating} (${place.reviewCount} reviews)` : "",
       ].filter(Boolean).join("\n"),
       bookingRef: "",
       transportMode: undefined,
@@ -726,7 +734,7 @@ export default function ExploreTab({ trip, isMember, onAddToItinerary }) {
   if (!isMember) {
     return (
       <div className="flex flex-col items-center justify-center h-full gap-3 text-center px-8 w-full">
-        <div className="text-4xl">🔒</div>
+        <Lock className="w-10 h-10 text-zinc-300" strokeWidth={1.5} />
         <p className="text-sm font-medium text-zinc-600">Members only</p>
       </div>
     );
@@ -741,7 +749,9 @@ export default function ExploreTab({ trip, isMember, onAddToItinerary }) {
 
       {/* ── Category sidebar (vertical on desktop, horizontal scroll on mobile) ── */}
       <div className="flex md:flex-col md:w-[72px] flex-shrink-0 border-b md:border-b-0 md:border-r border-zinc-100 md:items-center py-2 md:py-4 gap-1 bg-white overflow-x-auto md:overflow-visible">
-        {Object.entries(CATEGORIES).map(([key, c]) => (
+        {Object.entries(CATEGORIES).map(([key, c]) => {
+          const CatIcon = c.icon;
+          return (
           <button
             key={key}
             onClick={() => handleCategoryChange(key)}
@@ -751,10 +761,11 @@ export default function ExploreTab({ trip, isMember, onAddToItinerary }) {
                 : "text-zinc-400 hover:text-zinc-600 hover:bg-zinc-50"
             }`}
           >
-            <span className="text-xl leading-none">{c.icon}</span>
+            <CatIcon className="w-5 h-5" strokeWidth={2} />
             <span className="text-[10px] font-semibold leading-tight text-center">{c.label}</span>
           </button>
-        ))}
+          );
+        })}
       </div>
 
       {/* ── List / Detail panel ── */}
@@ -873,7 +884,7 @@ export default function ExploreTab({ trip, isMember, onAddToItinerary }) {
               {/* Error */}
               {!loading && error && (
                 <div className="flex flex-col items-center justify-center py-16 gap-3 text-center">
-                  <span className="text-4xl">😕</span>
+                  <Frown className="w-10 h-10 text-zinc-300" strokeWidth={1.5} />
                   <p className="text-sm text-zinc-500 max-w-[240px] leading-relaxed">{error}</p>
                   {searchCoords && (
                     <button
@@ -889,7 +900,7 @@ export default function ExploreTab({ trip, isMember, onAddToItinerary }) {
               {/* Empty */}
               {!loading && !error && places.length === 0 && (
                 <div className="flex flex-col items-center justify-center py-20 gap-3">
-                  <span className="text-5xl">{cat.icon}</span>
+                  {(() => { const CatIcon = cat.icon; return <CatIcon className="w-12 h-12 text-zinc-300" strokeWidth={1.5} />; })()}
                   <p className="text-sm font-semibold text-zinc-600">Find {cat.label.toLowerCase()}</p>
                   <p className="text-xs text-zinc-400 text-center max-w-[200px]">
                     Enter a city above to discover {cat.label.toLowerCase()} near you
@@ -942,7 +953,7 @@ export default function ExploreTab({ trip, isMember, onAddToItinerary }) {
               style={{ backgroundImage: "radial-gradient(circle, #000 1px, transparent 1px)", backgroundSize: "24px 24px" }}
             />
             <div className="relative text-center">
-              <span className="text-6xl opacity-10">🗺️</span>
+              <MapIcon className="w-14 h-14 text-zinc-300 opacity-40 mx-auto" strokeWidth={1.5} />
               <p className="text-sm text-zinc-400 mt-3 font-medium">Map loads after search</p>
               <p className="text-xs text-zinc-300 mt-1">Enter a city to get started</p>
             </div>

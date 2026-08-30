@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
+import { Hand, Eye, Pencil, Sparkles } from "lucide-react";
 import api from "../api/axios";
 
 const STEPS = ["destination", "name", "dates", "invite", "confirm"];
@@ -98,7 +99,7 @@ function CancelModal({ onKeep, onDiscard }) {
   return (
     <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 px-4">
       <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl">
-        <p className="text-xl font-semibold text-zinc-900 mb-2">😮 Slow down!</p>
+        <p className="text-xl font-semibold text-zinc-900 mb-2 flex items-center gap-2"><Hand className="w-5 h-5 text-rose-500" /> Slow down!</p>
         <p className="text-sm text-zinc-500 mb-6">
           {"You're about to cancel creating your trip. Are you sure you'd like to do that?"}
         </p>
@@ -397,8 +398,8 @@ export default function CreateTrip() {
               </div>
               <div className="flex gap-2 mb-6">
                 {["viewer", "editor"].map((r) => (
-                  <button key={r} onClick={() => setInviteRole(r)} className={`text-xs px-3 py-1.5 rounded-full border transition-all ${inviteRole === r ? "bg-rose-50 border-rose-300 text-rose-600" : "border-zinc-200 text-zinc-400 hover:border-zinc-300"}`}>
-                    {r === "viewer" ? "👁 Can view" : "✏️ Can edit"}
+                  <button key={r} onClick={() => setInviteRole(r)} className={`text-xs px-3 py-1.5 rounded-full border transition-all inline-flex items-center gap-1.5 ${inviteRole === r ? "bg-rose-50 border-rose-300 text-rose-600" : "border-zinc-200 text-zinc-400 hover:border-zinc-300"}`}>
+                    {r === "viewer" ? <><Eye className="w-3.5 h-3.5" /> Can view</> : <><Pencil className="w-3.5 h-3.5" /> Can edit</>}
                   </button>
                 ))}
               </div>
@@ -460,7 +461,7 @@ export default function CreateTrip() {
               <button onClick={handleSubmit} disabled={loading} className="mt-10 w-full bg-rose-500 hover:bg-rose-600 disabled:opacity-50 text-white font-medium py-3.5 rounded-full transition-all flex items-center justify-center gap-2">
                 {loading ? (
                   <><div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />Creating...</>
-                ) : "Create Trip ✦"}
+                ) : <>Create Trip <Sparkles className="w-4 h-4" /></>}
               </button>
             </div>
           )}

@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { Frown, PartyPopper, MapPin, Calendar, Pencil, Eye } from "lucide-react";
 import api from "../api/axios";
 
 export default function InviteAccept() {
@@ -49,7 +50,7 @@ export default function InviteAccept() {
   if (status === "error") {
     return (
       <div className="min-h-screen bg-white flex flex-col items-center justify-center gap-4 px-4">
-        <div className="text-4xl">😕</div>
+        <Frown className="w-12 h-12 text-zinc-300" strokeWidth={1.5} />
         <p className="text-zinc-600 font-medium text-center">{error}</p>
         <button onClick={() => navigate("/dashboard")} className="text-sm text-rose-500 hover:text-rose-600 transition-colors">
           ← Go to Dashboard
@@ -61,7 +62,7 @@ export default function InviteAccept() {
   if (status === "success") {
     return (
       <div className="min-h-screen bg-white flex flex-col items-center justify-center gap-4 px-4">
-        <div className="text-5xl">🎉</div>
+        <PartyPopper className="w-14 h-14 text-rose-500" strokeWidth={1.5} />
         <h2 className="text-xl font-bold text-zinc-900">You're in!</h2>
         <p className="text-zinc-400 text-sm">Redirecting to the trip...</p>
       </div>
@@ -90,20 +91,20 @@ export default function InviteAccept() {
           <div className="p-5">
             <h2 className="font-bold text-zinc-900 text-lg">{invite?.trip?.name}</h2>
             {invite?.trip?.destination?.fullLabel || invite?.trip?.destination?.name ? (
-              <p className="text-sm text-zinc-400 mt-1">
-                📍 {invite.trip.destination?.fullLabel || invite.trip.destination?.name}
+              <p className="text-sm text-zinc-400 mt-1 flex items-center gap-1.5">
+                <MapPin className="w-3.5 h-3.5" /> {invite.trip.destination?.fullLabel || invite.trip.destination?.name}
               </p>
             ) : null}
             {invite?.trip?.startDate && (
-              <p className="text-sm text-zinc-400 mt-0.5">
-                📅 {formatDate(invite.trip.startDate)}
+              <p className="text-sm text-zinc-400 mt-0.5 flex items-center gap-1.5">
+                <Calendar className="w-3.5 h-3.5" /> {formatDate(invite.trip.startDate)}
                 {invite.trip.endDate ? ` — ${formatDate(invite.trip.endDate)}` : ""}
               </p>
             )}
             <div className="mt-3 inline-flex items-center gap-1.5 bg-zinc-50 border border-zinc-200 rounded-full px-3 py-1">
               <span className="text-xs text-zinc-500">Your access:</span>
               <span className="text-xs font-semibold text-zinc-800 capitalize">{invite?.role}</span>
-              <span className="text-xs text-zinc-400">{invite?.role === "editor" ? "✏️" : "👁"}</span>
+              {invite?.role === "editor" ? <Pencil className="w-3 h-3 text-zinc-400" /> : <Eye className="w-3 h-3 text-zinc-400" />}
             </div>
           </div>
         </div>

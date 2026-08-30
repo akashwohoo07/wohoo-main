@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { BedDouble, MapPin, Pencil } from "lucide-react";
 import { useNominatim, useHotelSearch } from "./hooks.js";
 import { CURRENCIES } from "./constants.js";
 
@@ -99,11 +100,11 @@ export function HotelSearchField({ value, onChange, onSelect, bias }) {
               <button key={i} onMouseDown={(e) => { e.preventDefault(); setOpen(false); onSelect(r); }}
                 className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-zinc-50 transition-colors text-left border-b border-zinc-50 last:border-0">
                 <div className="w-12 h-12 rounded-xl overflow-hidden flex-shrink-0 bg-zinc-100 flex items-center justify-center">
-                  {r.photo ? <img src={r.photo} alt={r.name} className="w-full h-full object-cover" /> : <span className="text-xl">🏨</span>}
+                  {r.photo ? <img src={r.photo} alt={r.name} className="w-full h-full object-cover" /> : <BedDouble className="w-5 h-5 text-zinc-400" />}
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-zinc-800 truncate leading-tight">{r.name}</p>
-                  {r.region && <p className="text-[11px] text-zinc-400 truncate mt-0.5">📍 {r.region}</p>}
+                  {r.region && <p className="text-[11px] text-zinc-400 truncate mt-0.5 inline-flex items-center gap-1"><MapPin className="w-3 h-3" /> {r.region}</p>}
                   <span className={`inline-block text-[10px] font-semibold px-1.5 py-0.5 rounded-full mt-1 ${badge.color}`}>{badge.label}</span>
                 </div>
               </button>
@@ -112,7 +113,7 @@ export function HotelSearchField({ value, onChange, onSelect, bias }) {
           {!searching && value.length >= 2 && (
             <button onMouseDown={(e) => { e.preventDefault(); setOpen(false); onSelect({ name: value, region: "", lat: null, lng: null, placeId: "" }); }}
               className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-rose-50 transition-colors text-left border-t border-zinc-100">
-              <div className="w-12 h-12 rounded-xl bg-rose-50 flex items-center justify-center flex-shrink-0"><span className="text-xl">✏️</span></div>
+              <div className="w-12 h-12 rounded-xl bg-rose-50 flex items-center justify-center flex-shrink-0"><Pencil className="w-5 h-5 text-rose-400" /></div>
               <div>
                 <p className="text-sm font-medium text-zinc-700">Add "{value}" manually</p>
                 <p className="text-[11px] text-zinc-400">Without map pin or photo</p>

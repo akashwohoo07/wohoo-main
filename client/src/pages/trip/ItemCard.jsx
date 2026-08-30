@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { MapPin, Star } from "lucide-react";
 import { TYPE_META, TRANSPORT_MODES, fmtDateShort, fmtTime, getCurrencySymbol, getCountryCode } from "./constants.js";
 import { useNominatim } from "./hooks.js";
 import ItemModal from "./ItemModal.jsx";
@@ -107,7 +108,7 @@ export function DestinationCard({ item, canEdit, hovered, isDragging, attributes
 
         {(item.region || dateChip) && !inlineEdit && (
           <div className="flex items-center gap-2 mt-0.5 ml-5 flex-wrap">
-            {item.region && <span className="text-[11px] text-zinc-400">📍 {item.region}</span>}
+            {item.region && <span className="text-[11px] text-zinc-400 inline-flex items-center gap-1"><MapPin className="w-3 h-3" /> {item.region}</span>}
             {dateChip && <span className="text-[11px] text-zinc-400 bg-zinc-100 px-2 py-0.5 rounded-full">{dateChip}</span>}
           </div>
         )}
@@ -182,9 +183,14 @@ export function ItemCard({ item, index, canEdit, tripStartDate, tripEndDate, tri
               </div>
             )}
 
-            <span className={`w-6 h-6 flex items-center justify-center rounded-md border text-xs flex-shrink-0 mt-1 ${meta.color}`}>
-              {item.type === "transport" && tm ? tm.icon : meta.icon}
-            </span>
+            {(() => {
+              const RowIcon = item.type === "transport" && tm ? tm.icon : meta.icon;
+              return (
+                <span className={`w-6 h-6 flex items-center justify-center rounded-md border flex-shrink-0 mt-1 ${meta.color}`}>
+                  <RowIcon className="w-3.5 h-3.5" />
+                </span>
+              );
+            })()}
 
             <div className="flex-1 min-w-0">
               <p className={`text-sm leading-tight truncate ${displayTitle ? "font-medium text-zinc-800" : "text-zinc-400 italic"}`}>
@@ -194,11 +200,11 @@ export function ItemCard({ item, index, canEdit, tripStartDate, tripEndDate, tri
                 <p className="text-[11px] text-zinc-400 truncate leading-tight">{item.title}</p>
               )}
               {item.type !== "transport" && item.region && (
-                <p className="text-[11px] text-zinc-400 truncate leading-tight">📍 {item.region}</p>
+                <p className="text-[11px] text-zinc-400 truncate leading-tight inline-flex items-center gap-1"><MapPin className="w-3 h-3" /> {item.region}</p>
               )}
               {item.rating && (
                 <div className="flex items-center gap-1 mt-0.5">
-                  <span className="text-amber-400 text-[10px]">★</span>
+                  <Star className="w-2.5 h-2.5 text-amber-400 fill-amber-400" />
                   <span className="text-[10px] font-semibold text-zinc-600">{item.rating}</span>
                   {item.reviewCount && <span className="text-[10px] text-zinc-400">({item.reviewCount >= 1000 ? (item.reviewCount/1000).toFixed(1)+"k" : item.reviewCount})</span>}
                   {item.isOpen === true  && <span className="text-[10px] text-green-600 font-semibold ml-1">● Open</span>}

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Plane, TrainFront, Clock } from "lucide-react";
 import api from "../../api/axios";
 
 // ── Backend proxy helpers ──────────────────────────────────────
@@ -105,7 +106,7 @@ export function FlightSearchPanel({ onFill, initialFlightNum = "", initialDate =
       endDate: arr_dt.date || date,
       endTime: arr_dt.time,
       notes: [
-        result.airline  ? `✈️ ${result.airline} — ${result.flightNum}` : "",
+        result.airline  ? `Flight: ${result.airline} — ${result.flightNum}` : "",
         result.status   ? `Status: ${result.status}` : "",
         result.aircraft ? `Aircraft: ${result.aircraft}` : "",
         result.depTerminal ? `Dept. Terminal ${result.depTerminal}${result.depGate ? ", Gate " + result.depGate : ""}` : "",
@@ -124,7 +125,7 @@ export function FlightSearchPanel({ onFill, initialFlightNum = "", initialDate =
   return (
     <div className="bg-sky-50 border border-sky-200 rounded-2xl p-4 space-y-3">
       <div className="flex items-center gap-2 mb-1">
-        <span className="text-lg">✈️</span>
+        <Plane className="w-5 h-5 text-sky-700" />
         <p className="text-sm font-semibold text-sky-800">Search by flight number</p>
       </div>
 
@@ -190,7 +191,7 @@ export function FlightSearchPanel({ onFill, initialFlightNum = "", initialDate =
             <div className="flex-shrink-0 text-center px-1">
               <div className="flex items-center gap-0.5">
                 <div className="w-4 h-px bg-zinc-300" />
-                <span className="text-zinc-400 text-xs">✈</span>
+                <Plane className="w-3 h-3 text-zinc-400" />
                 <div className="w-4 h-px bg-zinc-300" />
               </div>
               {result.aircraft && <p className="text-[9px] text-zinc-300 mt-0.5">{result.aircraft}</p>}
@@ -301,7 +302,7 @@ export function TrainSearchPanel({ onFill, initialQuery = "", initialDate = "" }
   return (
     <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 space-y-3">
       <div className="flex items-center gap-2 mb-1">
-        <span className="text-lg">🚂</span>
+        <TrainFront className="w-5 h-5 text-amber-700" />
         <p className="text-sm font-semibold text-amber-800">Search train</p>
       </div>
 
@@ -378,7 +379,7 @@ export function TrainSearchPanel({ onFill, initialQuery = "", initialDate = "" }
             </span>
           )}
           {result.duration && (
-            <p className="text-[11px] text-zinc-400">⏱ {result.duration}</p>
+            <p className="text-[11px] text-zinc-400 inline-flex items-center gap-1"><Clock className="w-3 h-3" /> {result.duration}</p>
           )}
 
           <button onClick={handleUse} disabled={resolving}

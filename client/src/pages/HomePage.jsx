@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { Mountain, Waves, Trees, Moon, Globe, Star, Check } from "lucide-react";
 
 /* ══════════════════════════════════════════════════
    GLOBAL CSS
@@ -69,10 +70,10 @@ const DESTINATIONS = [
 ];
 
 const EXPERIENCES = [
-  { emoji:"🏔️", title:"Mountain Peaks",  sub:"Where silence speaks loudest",     img:"https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=700&q=85" },
-  { emoji:"🌊", title:"Ocean Escapes",   sub:"Drift into liquid paradise",         img:"https://images.unsplash.com/photo-1505118380757-91f5f5632de0?w=700&q=85" },
-  { emoji:"🌿", title:"Forest Temples",  sub:"Ancient paths to inner calm",        img:"https://images.unsplash.com/photo-1448375240586-882707db888b?w=700&q=85" },
-  { emoji:"🌙", title:"Desert Nights",   sub:"A billion stars, zero distractions", img:"https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=700&q=85" },
+  { Icon: Mountain, title:"Mountain Peaks",  sub:"Where silence speaks loudest",     img:"https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=700&q=85" },
+  { Icon: Waves,    title:"Ocean Escapes",   sub:"Drift into liquid paradise",         img:"https://images.unsplash.com/photo-1505118380757-91f5f5632de0?w=700&q=85" },
+  { Icon: Trees,    title:"Forest Temples",  sub:"Ancient paths to inner calm",        img:"https://images.unsplash.com/photo-1448375240586-882707db888b?w=700&q=85" },
+  { Icon: Moon,     title:"Desert Nights",   sub:"A billion stars, zero distractions", img:"https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=700&q=85" },
 ];
 
 const STEPS = [
@@ -426,7 +427,7 @@ export default function WohooHome() {
               backdropFilter:"blur(16px)", boxShadow:"0 4px 24px rgba(17,17,16,.08)",
               animation:"fadeUp .85s ease both", animationDelay:".86s", opacity:0,
             }}>
-              <span style={{ fontSize:"1.3rem" }}>🌍</span>
+              <Globe size={20} color={isMob ? "#FAFAF8" : "#111110"} strokeWidth={1.75} />
               <div>
                 <div style={{ fontFamily:"'Jost'", fontWeight:600, fontSize:"13px", color: isMob?"#fff":"#111110" }}>194 destinations</div>
                 <div style={{ fontFamily:"'Jost'", fontSize:"11px", color: isMob?"rgba(255,255,255,.6)":"rgba(17,17,16,.4)", marginTop:2 }}>across 6 continents</div>
@@ -580,8 +581,9 @@ export default function WohooHome() {
               borderRadius:100, padding: isMob?"7px 14px":"9px 18px",
               fontFamily:"'Jost'", fontSize:"11px", fontWeight:600,
               color:"rgba(250,250,248,.88)", letterSpacing:".1em", textTransform:"uppercase",
+              display:"inline-flex", alignItems:"center", gap:7,
             }}>
-              🌊 Ocean Journeys
+              <Waves size={14} strokeWidth={2} /> Ocean Journeys
             </div>
           </div>
 
@@ -775,7 +777,7 @@ export default function WohooHome() {
                 background:"#FAFAF8", borderRadius:14, padding:"12px 16px",
                 boxShadow:"0 8px 32px rgba(17,17,16,.1)", display:"flex", alignItems:"center", gap:10,
               }}>
-                <span style={{ fontSize:"1.1rem" }}>⭐</span>
+                <Star size={18} color="#F59E0B" fill="#F59E0B" />
                 <div>
                   <div style={{ fontFamily:"'Jost'", fontSize:"13px", fontWeight:600 }}>4.9 / 5.0</div>
                   <div style={{ fontFamily:"'Jost'", fontSize:"11px", color:"rgba(17,17,16,.4)" }}>12k+ reviews</div>
@@ -828,7 +830,7 @@ export default function WohooHome() {
           <div className="rev" style={{ display:"flex", justifyContent:"center", gap: isMob?16:32, flexWrap:"wrap", marginTop:36 }}>
             {["Free forever plan","No credit card","Cancel anytime"].map(b=>(
               <span key={b} style={{ fontFamily:"'Jost'", fontSize:"12px", color:"rgba(250,250,248,.26)", display:"flex", alignItems:"center", gap:6 }}>
-                <span style={{ color:"#86EFAC" }}>✓</span> {b}
+                <Check size={14} color="#86EFAC" strokeWidth={2.5} /> {b}
               </span>
             ))}
           </div>
@@ -927,7 +929,7 @@ function ExpCard({ exp, i, isMob }) {
         transform:hov?"scale(1.07)":"scale(1)",transition:"transform .85s cubic-bezier(.16,1,.3,1)" }} />
       <div style={{ position:"absolute",inset:0,background:"linear-gradient(to top,rgba(17,17,16,.78) 30%,transparent 65%)" }} />
       <div style={{ position:"absolute",bottom:0,left:0,right:0,padding: isMob?"14px":"22px" }}>
-        <div style={{ fontSize: isMob?"1.1rem":"1.3rem",marginBottom:5 }}>{exp.emoji}</div>
+        <div style={{ marginBottom:7 }}><exp.Icon size={isMob?18:22} color="#FAFAF8" strokeWidth={1.75} /></div>
         <h3 style={{ fontFamily:"'Cormorant Garamond',serif",fontSize: isMob?"1.1rem":"1.4rem",fontWeight:700,letterSpacing:"-0.02em",color:"#FAFAF8",marginBottom:4 }}>{exp.title}</h3>
         {!isMob && <p style={{ fontFamily:"'Jost'",fontSize:"11px",fontWeight:300,color:"rgba(250,250,248,.58)",lineHeight:1.6 }}>{exp.sub}</p>}
       </div>

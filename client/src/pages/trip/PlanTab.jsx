@@ -9,6 +9,10 @@ import {
   useSortable, arrayMove,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import {
+  Plane, TrainFront, Bus, MapPin, Pencil, Search, Map as MapIcon, Star, BedDouble,
+} from "lucide-react";
+import { TRANSPORT_ICON, TYPE_ICON, KIND_ICON, iconSvg } from "../../lib/icons.jsx";
 
 // ─────────────────────────────────────────────────────────────
 // CONSTANTS
@@ -23,26 +27,26 @@ const CURRENCIES = [
 ];
 
 const TRANSPORT_MODES = [
-  { id: "flight", label: "Flight", icon: "✈️" },
-  { id: "train",  label: "Train",  icon: "🚂" },
-  { id: "bus",    label: "Bus",    icon: "🚌" },
-  { id: "car",    label: "Car / Cab", icon: "🚗" },
-  { id: "ferry",  label: "Ferry",  icon: "⛴️" },
-  { id: "metro",  label: "Metro",  icon: "🚇" },
-  { id: "bike",   label: "Bike",   icon: "🏍️" },
-  { id: "walk",   label: "Walk",   icon: "🚶" },
+  { id: "flight", label: "Flight", icon: TRANSPORT_ICON.flight },
+  { id: "train",  label: "Train",  icon: TRANSPORT_ICON.train },
+  { id: "bus",    label: "Bus",    icon: TRANSPORT_ICON.bus },
+  { id: "car",    label: "Car / Cab", icon: TRANSPORT_ICON.car },
+  { id: "ferry",  label: "Ferry",  icon: TRANSPORT_ICON.ferry },
+  { id: "metro",  label: "Metro",  icon: TRANSPORT_ICON.metro },
+  { id: "bike",   label: "Bike",   icon: TRANSPORT_ICON.bike },
+  { id: "walk",   label: "Walk",   icon: TRANSPORT_ICON.walk },
 ];
 
 const ADD_CATEGORIES = [
-  { type: "destination", label: "Destination",   icon: "📍", color: "text-rose-500 bg-rose-50 border-rose-200",     desc: "City, town or place" },
-  { type: "hotel",       label: "Hotel / Stay",  icon: "🏨", color: "text-blue-500 bg-blue-50 border-blue-200",     desc: "Accommodation" },
-  { type: "restaurant",  label: "Restaurant",    icon: "🍽️", color: "text-amber-500 bg-amber-50 border-amber-200",  desc: "Food & dining" },
-  { type: "activity",    label: "Activity",      icon: "🎯", color: "text-violet-500 bg-violet-50 border-violet-200", desc: "Things to do" },
-  { type: "transport",   label: "Transport",     icon: "🚆", color: "text-emerald-500 bg-emerald-50 border-emerald-200", desc: "Getting around" },
-  { type: "place",       label: "Place / Sight", icon: "🏛️", color: "text-cyan-500 bg-cyan-50 border-cyan-200",    desc: "Museums, parks, sights" },
-  { type: "shopping",    label: "Shopping",      icon: "🛍️", color: "text-pink-500 bg-pink-50 border-pink-200",    desc: "Markets & shops" },
-  { type: "note",        label: "Note",          icon: "📝", color: "text-zinc-500 bg-zinc-50 border-zinc-200",     desc: "Free text note" },
-  { type: "other",       label: "Other",         icon: "📌", color: "text-orange-500 bg-orange-50 border-orange-200", desc: "Anything else" },
+  { type: "destination", label: "Destination",   icon: TYPE_ICON.destination, color: "text-rose-500 bg-rose-50 border-rose-200",     desc: "City, town or place" },
+  { type: "hotel",       label: "Hotel / Stay",  icon: TYPE_ICON.hotel,       color: "text-blue-500 bg-blue-50 border-blue-200",     desc: "Accommodation" },
+  { type: "restaurant",  label: "Restaurant",    icon: TYPE_ICON.restaurant,  color: "text-amber-500 bg-amber-50 border-amber-200",  desc: "Food & dining" },
+  { type: "activity",    label: "Activity",      icon: TYPE_ICON.activity,    color: "text-violet-500 bg-violet-50 border-violet-200", desc: "Things to do" },
+  { type: "transport",   label: "Transport",     icon: TYPE_ICON.transport,   color: "text-emerald-500 bg-emerald-50 border-emerald-200", desc: "Getting around" },
+  { type: "place",       label: "Place / Sight", icon: TYPE_ICON.place,       color: "text-cyan-500 bg-cyan-50 border-cyan-200",    desc: "Museums, parks, sights" },
+  { type: "shopping",    label: "Shopping",      icon: TYPE_ICON.shopping,    color: "text-pink-500 bg-pink-50 border-pink-200",    desc: "Markets & shops" },
+  { type: "note",        label: "Note",          icon: TYPE_ICON.note,        color: "text-zinc-500 bg-zinc-50 border-zinc-200",     desc: "Free text note" },
+  { type: "other",       label: "Other",         icon: TYPE_ICON.other,       color: "text-orange-500 bg-orange-50 border-orange-200", desc: "Anything else" },
 ];
 
 const TYPE_META = Object.fromEntries(ADD_CATEGORIES.map((c) => [c.type, c]));
@@ -511,7 +515,7 @@ function FlightSearchPanel({ onFill, initialFlightNum = "", initialDate = "" }) 
       endDate: arrDate,
       endTime: arrTime,
       notes: [
-        result.airline ? `✈️ ${result.airline} — ${result.flightNum}` : "",
+        result.airline ? `Flight: ${result.airline} — ${result.flightNum}` : "",
         result.status ? `Status: ${result.status}` : "",
       ].filter(Boolean).join("\n"),
     });
@@ -520,7 +524,7 @@ function FlightSearchPanel({ onFill, initialFlightNum = "", initialDate = "" }) 
   return (
     <div className="bg-sky-50 border border-sky-200 rounded-2xl p-4 space-y-3">
       <div className="flex items-center gap-2 mb-1">
-        <span className="text-lg">✈️</span>
+        <Plane className="w-5 h-5 text-sky-700" />
         <p className="text-sm font-semibold text-sky-800">Search by flight number</p>
       </div>
 
@@ -594,7 +598,7 @@ function FlightSearchPanel({ onFill, initialFlightNum = "", initialDate = "" }) 
             <div className="flex-shrink-0 text-center">
               <div className="flex items-center gap-1">
                 <div className="w-6 h-px bg-zinc-300" />
-                <span className="text-zinc-400 text-xs">✈</span>
+                <Plane className="w-3 h-3 text-zinc-400" />
                 <div className="w-6 h-px bg-zinc-300" />
               </div>
             </div>
@@ -698,7 +702,7 @@ function TrainSearchPanel({ onFill, initialQuery = "", initialDate = "" }) {
   return (
     <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 space-y-3">
       <div className="flex items-center gap-2 mb-1">
-        <span className="text-lg">🚂</span>
+        <TrainFront className="w-5 h-5 text-amber-700" />
         <p className="text-sm font-semibold text-amber-800">Search train</p>
       </div>
 
@@ -774,7 +778,7 @@ function TrainSearchPanel({ onFill, initialQuery = "", initialDate = "" }) {
                 <p className="text-[10px] text-zinc-400 uppercase tracking-wider">From</p>
                 <p className="text-xs font-semibold text-zinc-800">{result.from || "—"}</p>
               </div>
-              <span className="text-zinc-400 text-xs">🚂→</span>
+              <span className="text-zinc-400 text-xs inline-flex items-center gap-1"><TrainFront className="w-3 h-3" />→</span>
               <div className="flex-1 text-right">
                 <p className="text-[10px] text-zinc-400 uppercase tracking-wider">To</p>
                 <p className="text-xs font-semibold text-zinc-800">{result.to || "—"}</p>
@@ -923,12 +927,12 @@ function HotelSearchField({ value, onChange, onSelect, bias }) {
                 <div className="w-12 h-12 rounded-xl overflow-hidden flex-shrink-0 bg-zinc-100 flex items-center justify-center">
                   {r.photo
                     ? <img src={r.photo} alt={r.name} className="w-full h-full object-cover" />
-                    : <span className="text-xl">🏨</span>
+                    : <BedDouble className="w-5 h-5 text-zinc-400" />
                   }
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-zinc-800 truncate leading-tight">{r.name}</p>
-                  {r.region && <p className="text-[11px] text-zinc-400 truncate mt-0.5">📍 {r.region}</p>}
+                  {r.region && <p className="text-[11px] text-zinc-400 truncate mt-0.5 flex items-center gap-1"><MapPin className="w-3 h-3" /> {r.region}</p>}
                   <span className={`inline-block text-[10px] font-semibold px-1.5 py-0.5 rounded-full mt-1 ${badge.color}`}>
                     {badge.label}
                   </span>
@@ -941,7 +945,7 @@ function HotelSearchField({ value, onChange, onSelect, bias }) {
               onMouseDown={(e) => { e.preventDefault(); handleSelect({ name: value, region: "", lat: null, lng: null, placeId: "" }); }}
               className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-rose-50 transition-colors text-left border-t border-zinc-100">
               <div className="w-12 h-12 rounded-xl bg-rose-50 flex items-center justify-center flex-shrink-0">
-                <span className="text-xl">✏️</span>
+                <Pencil className="w-5 h-5 text-rose-400" />
               </div>
               <div>
                 <p className="text-sm font-medium text-zinc-700">Add "{value}" manually</p>
@@ -1005,10 +1009,10 @@ function NotesField({ value, onChange, placeholder }) {
 // ─────────────────────────────────────────────────────────────
 
 const SEARCHABLE_TYPES = {
-  hotel:      { kind: "stays",      icon: "🏨", label: "Hotels & Stays",    color: "bg-blue-50 border-blue-200 text-blue-700" },
-  restaurant: { kind: "eats",       icon: "🍽️", label: "Restaurants & Cafes", color: "bg-amber-50 border-amber-200 text-amber-700" },
-  activity:   { kind: "activities", icon: "🎯", label: "Activities",         color: "bg-violet-50 border-violet-200 text-violet-700" },
-  place:      { kind: "sights",     icon: "🏛️", label: "Sights & Museums",  color: "bg-cyan-50 border-cyan-200 text-cyan-700" },
+  hotel:      { kind: "stays",      icon: KIND_ICON.stays,      label: "Hotels & Stays",    color: "bg-blue-50 border-blue-200 text-blue-700" },
+  restaurant: { kind: "eats",       icon: KIND_ICON.eats,       label: "Restaurants & Cafes", color: "bg-amber-50 border-amber-200 text-amber-700" },
+  activity:   { kind: "activities", icon: KIND_ICON.activities, label: "Activities",         color: "bg-violet-50 border-violet-200 text-violet-700" },
+  place:      { kind: "sights",     icon: KIND_ICON.sights,     label: "Sights & Museums",  color: "bg-cyan-50 border-cyan-200 text-cyan-700" },
 };
 
 function StarRow({ rating, count }) {
@@ -1078,10 +1082,10 @@ function PlaceSearchDrawer({ type, tripDestination, onSelect, onClose }) {
       placeId: place.id,
       notes: [
         place.description || "",
-        place.hours ? `🕐 ${place.hours.split("\n")[0]}` : "",
-        place.website ? `🌐 ${place.website}` : "",
-        place.phone ? `📞 ${place.phone}` : "",
-        place.rating ? `⭐ ${place.rating} (${place.reviewCount || 0} reviews)` : "",
+        place.hours ? `Hours: ${place.hours.split("\n")[0]}` : "",
+        place.website ? `Website: ${place.website}` : "",
+        place.phone ? `Phone: ${place.phone}` : "",
+        place.rating ? `Rating: ${place.rating} (${place.reviewCount || 0} reviews)` : "",
       ].filter(Boolean).join("\n"),
       photo: place.photo || null,
       rating: place.rating || null,
@@ -1099,7 +1103,7 @@ function PlaceSearchDrawer({ type, tripDestination, onSelect, onClose }) {
         onClick={e => e.stopPropagation()}>
 
         <div className="flex items-center gap-3 px-4 pt-4 pb-3 border-b border-zinc-100 flex-shrink-0">
-          <span className="text-xl">{meta?.icon}</span>
+          {meta?.icon && <meta.icon className="w-5 h-5 text-zinc-700" />}
           <div className="flex-1">
             <p className="text-sm font-semibold text-zinc-800">{meta?.label}</p>
             <p className="text-[11px] text-zinc-400">
@@ -1152,7 +1156,7 @@ function PlaceSearchDrawer({ type, tripDestination, onSelect, onClose }) {
 
           {!loading && searched && results.length === 0 && (
             <div className="flex flex-col items-center justify-center py-12 gap-2 text-center px-4">
-              <span className="text-3xl">🔍</span>
+              <Search className="w-8 h-8 text-zinc-300" strokeWidth={1.5} />
               <p className="text-sm text-zinc-500">No results found</p>
               <p className="text-xs text-zinc-400">Try a different search term</p>
             </div>
@@ -1171,12 +1175,12 @@ function PlaceSearchDrawer({ type, tripDestination, onSelect, onClose }) {
                       <img src={place.photo} alt={place.name} className="w-full h-full object-cover"
                         onError={(e) => { e.target.style.display="none"; }}/>
                     ) : (
-                      <span className="text-2xl opacity-30">{meta?.icon}</span>
+                      meta?.icon && <meta.icon className="w-6 h-6 text-zinc-300" />
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold text-zinc-800 truncate leading-tight">{place.name}</p>
-                    {place.address && <p className="text-[11px] text-zinc-400 truncate mt-0.5">📍 {place.address}</p>}
+                    {place.address && <p className="text-[11px] text-zinc-400 truncate mt-0.5 flex items-center gap-1"><MapPin className="w-3 h-3 flex-shrink-0" /> {place.address}</p>}
                     <div className="flex items-center gap-2 mt-1 flex-wrap">
                       <StarRow rating={place.rating} count={place.reviewCount} />
                       {place.price && <span className="text-[10px] text-zinc-500">{PRICE_LABELS[place.price]}</span>}
@@ -1219,17 +1223,20 @@ function AddMenu({ onSelect, onClose }) {
       className="absolute left-0 z-40 bg-white rounded-2xl shadow-2xl border border-zinc-100 py-2 w-[248px] overflow-hidden"
       style={{ top: "calc(100% + 4px)" }}>
       <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest px-4 pt-1 pb-2">Add to itinerary</p>
-      {ADD_CATEGORIES.map((cat) => (
+      {ADD_CATEGORIES.map((cat) => {
+        const CatIcon = cat.icon;
+        return (
         <button key={cat.type}
           onMouseDown={(e) => { e.preventDefault(); onSelect(cat.type); }}
           className="w-full flex items-center gap-3 px-4 py-2 hover:bg-zinc-50 transition-colors text-left">
-          <span className={`w-7 h-7 flex items-center justify-center rounded-lg border text-sm flex-shrink-0 ${cat.color}`}>{cat.icon}</span>
+          <span className={`w-7 h-7 flex items-center justify-center rounded-lg border flex-shrink-0 ${cat.color}`}><CatIcon className="w-4 h-4" /></span>
           <div>
             <p className="text-sm font-medium text-zinc-800 leading-tight">{cat.label}</p>
             <p className="text-[11px] text-zinc-400">{cat.desc}</p>
           </div>
         </button>
-      ))}
+        );
+      })}
     </div>
   );
 }
@@ -1297,9 +1304,14 @@ function ItemModal({ item, tripStartDate, tripEndDate, tripDestination, onSave, 
       <div className="bg-white rounded-t-3xl sm:rounded-2xl w-full sm:max-w-md shadow-2xl max-h-[88vh] flex flex-col">
         {/* Header */}
         <div className="flex items-center gap-3 px-5 pt-5 pb-4 border-b border-zinc-100 flex-shrink-0">
-          <span className={`w-9 h-9 flex items-center justify-center rounded-xl border text-lg flex-shrink-0 ${meta.color}`}>
-            {item.type === "transport" && tm ? tm.icon : meta.icon}
-          </span>
+          {(() => {
+            const HeadIcon = item.type === "transport" && tm ? tm.icon : meta.icon;
+            return (
+              <span className={`w-9 h-9 flex items-center justify-center rounded-xl border flex-shrink-0 ${meta.color}`}>
+                <HeadIcon style={{ width: 18, height: 18 }} />
+              </span>
+            );
+          })()}
           <div className="flex-1 min-w-0">
             <p className="text-sm font-semibold text-zinc-800">{meta.label}</p>
             <p className="text-[11px] text-zinc-400">{meta.desc}</p>
@@ -1319,7 +1331,7 @@ function ItemModal({ item, tripStartDate, tripEndDate, tripDestination, onSave, 
             <LocationField label="Destination" value={form.title} onChange={(v) => set("title", v)}
               onSelect={(r) => setForm((f) => ({ ...f, title: r.primary, lat: r.lat, lng: r.lng, placeId: r.placeId, region: r.sub }))}
               placeholder="Search city, town, place..." />
-            {form.lat && <p className="text-[11px] text-zinc-400 -mt-2">📍 {form.region}</p>}
+            {form.lat && <p className="text-[11px] text-zinc-400 -mt-2 inline-flex items-center gap-1"><MapPin className="w-3 h-3" /> {form.region}</p>}
             <DTPair label="Arrival" date={form.date} time={form.time} minDate={minDate} maxDate={maxDate}
               onDate={(v) => { set("date", v); if (form.endDate < v) set("endDate", ""); }} onTime={(v) => set("time", v)} />
             <DTPair label="Departure" date={form.endDate} time={form.endTime} minDate={form.date || minDate} maxDate={maxDate}
@@ -1333,10 +1345,10 @@ function ItemModal({ item, tripStartDate, tripEndDate, tripDestination, onSave, 
               onSelect={(r) => setForm((f) => ({ ...f, title: r.name, region: r.region || f.region, lat: r.lat ?? f.lat, lng: r.lng ?? f.lng, placeId: r.placeId || f.placeId }))} />
             {form.title && (
               <div className="flex items-center gap-2 bg-blue-50 border border-blue-100 rounded-xl px-3 py-2">
-                <span className="text-base">🏨</span>
+                <BedDouble className="w-4 h-4 text-blue-500 flex-shrink-0" />
                 <div className="flex-1 min-w-0">
                   <p className="text-xs font-semibold text-zinc-800 truncate">{form.title}</p>
-                  {form.region && <p className="text-[11px] text-zinc-500 truncate">📍 {form.region}</p>}
+                  {form.region && <p className="text-[11px] text-zinc-500 truncate inline-flex items-center gap-1"><MapPin className="w-3 h-3" /> {form.region}</p>}
                 </div>
                 <button onClick={() => setForm((f) => ({ ...f, title: "", region: "", lat: null, lng: null, placeId: "" }))}
                   className="text-zinc-300 hover:text-zinc-500 transition-colors flex-shrink-0">
@@ -1399,7 +1411,9 @@ function ItemModal({ item, tripStartDate, tripEndDate, tripDestination, onSave, 
             <div>
               <label className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider mb-2 block">Mode of transport</label>
               <div className="flex flex-wrap gap-1.5">
-                {TRANSPORT_MODES.map((m) => (
+                {TRANSPORT_MODES.map((m) => {
+                  const ModeIcon = m.icon;
+                  return (
                   <button key={m.id} type="button"
                     onClick={() => {
                       set("transportMode", m.id);
@@ -1411,9 +1425,10 @@ function ItemModal({ item, tripStartDate, tripEndDate, tripDestination, onSave, 
                         ? "bg-emerald-50 border-emerald-300 text-emerald-700"
                         : "border-zinc-200 text-zinc-500 hover:border-zinc-300"
                     }`}>
-                    {m.icon} {m.label}
+                    <ModeIcon className="w-3.5 h-3.5" /> {m.label}
                   </button>
-                ))}
+                  );
+                })}
               </div>
             </div>
 
@@ -1423,11 +1438,11 @@ function ItemModal({ item, tripStartDate, tripEndDate, tripDestination, onSave, 
                 <div className="flex gap-1 bg-zinc-100 p-1 rounded-xl mb-3">
                   <button
                     onClick={() => setTransportSearch("manual")}
-                    className={`flex-1 text-xs font-semibold py-1.5 rounded-lg transition-all ${
+                    className={`flex-1 inline-flex items-center justify-center gap-1.5 text-xs font-semibold py-1.5 rounded-lg transition-all ${
                       transportSearch === "manual" ? "bg-white text-zinc-800 shadow-sm" : "text-zinc-500"
                     }`}
                   >
-                    ✏️ Manual
+                    <Pencil className="w-3.5 h-3.5" /> Manual
                   </button>
                   {form.transportMode === "flight" && (
                     <button
@@ -1436,7 +1451,7 @@ function ItemModal({ item, tripStartDate, tripEndDate, tripDestination, onSave, 
                         transportSearch === "flight" ? "bg-white text-sky-700 shadow-sm" : "text-zinc-500"
                       }`}
                     >
-                      ✈️ By flight no.
+                      <span className="inline-flex items-center justify-center gap-1.5"><Plane className="w-3.5 h-3.5" /> By flight no.</span>
                     </button>
                   )}
                   {form.transportMode === "train" && (
@@ -1446,7 +1461,7 @@ function ItemModal({ item, tripStartDate, tripEndDate, tripDestination, onSave, 
                         transportSearch === "train" ? "bg-white text-amber-700 shadow-sm" : "text-zinc-500"
                       }`}
                     >
-                      🚂 Search train
+                      <span className="inline-flex items-center justify-center gap-1.5"><TrainFront className="w-3.5 h-3.5" /> Search train</span>
                     </button>
                   )}
                 </div>
@@ -1503,7 +1518,7 @@ function ItemModal({ item, tripStartDate, tripEndDate, tripDestination, onSave, 
             {/* Show pre-filled summary when search tab filled the form */}
             {transportSearch !== "manual" && (form.fromStation || form.toStation) && (
               <div className="bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2.5 flex items-center gap-2">
-                <span className="text-base">{form.transportMode === "flight" ? "✈️" : "🚂"}</span>
+                {form.transportMode === "flight" ? <Plane className="w-4 h-4 text-emerald-600" /> : <TrainFront className="w-4 h-4 text-emerald-600" />}
                 <div className="flex-1 min-w-0">
                   {form.title && <p className="text-xs font-semibold text-zinc-800 truncate">{form.title}</p>}
                   <p className="text-[11px] text-emerald-700 truncate">
@@ -1537,7 +1552,7 @@ function ItemModal({ item, tripStartDate, tripEndDate, tripDestination, onSave, 
             <LocationField label="Place / Sight name" value={form.title} onChange={(v) => set("title", v)}
               onSelect={(r) => setForm((f) => ({ ...f, title: r.primary, lat: r.lat, lng: r.lng, placeId: r.placeId, region: r.sub }))}
               placeholder="e.g. Taj Mahal, India Gate..." />
-            {form.lat && <p className="text-[11px] text-zinc-400 -mt-2">📍 {form.region}</p>}
+            {form.lat && <p className="text-[11px] text-zinc-400 -mt-2 inline-flex items-center gap-1"><MapPin className="w-3 h-3" /> {form.region}</p>}
             <DTPair label="Visit date" date={form.date} time={form.time} minDate={minDate} maxDate={maxDate}
               onDate={(v) => set("date", v)} onTime={(v) => set("time", v)} />
             <PriceField price={form.price} currency={form.currency} onPriceChange={(v) => set("price", v)} onCurrencyChange={(v) => set("currency", v)} />
@@ -1723,7 +1738,7 @@ function DestinationCard({ item, canEdit, hovered, isDragging, attributes, liste
 
         {(item.region || dateChip) && !inlineEdit && (
           <div className="flex items-center gap-2 mt-0.5 ml-5 flex-wrap">
-            {item.region && <span className="text-[11px] text-zinc-400">📍 {item.region}</span>}
+            {item.region && <span className="text-[11px] text-zinc-400 inline-flex items-center gap-1"><MapPin className="w-3 h-3" /> {item.region}</span>}
             {dateChip && <span className="text-[11px] text-zinc-400 bg-zinc-100 px-2 py-0.5 rounded-full">{dateChip}</span>}
           </div>
         )}
@@ -1803,9 +1818,14 @@ function ItemCard({ item, index, canEdit, tripStartDate, tripEndDate, tripDestin
               </div>
             )}
 
-            <span className={`w-6 h-6 flex items-center justify-center rounded-md border text-xs flex-shrink-0 mt-1 ${meta.color}`}>
-              {item.type === "transport" && tm ? tm.icon : meta.icon}
-            </span>
+            {(() => {
+              const RowIcon = item.type === "transport" && tm ? tm.icon : meta.icon;
+              return (
+                <span className={`w-6 h-6 flex items-center justify-center rounded-md border flex-shrink-0 mt-1 ${meta.color}`}>
+                  <RowIcon className="w-3.5 h-3.5" />
+                </span>
+              );
+            })()}
 
             <div className="flex-1 min-w-0">
               <p className={`text-sm leading-tight truncate ${displayTitle ? "font-medium text-zinc-800" : "text-zinc-400 italic"}`}>
@@ -1815,11 +1835,11 @@ function ItemCard({ item, index, canEdit, tripStartDate, tripEndDate, tripDestin
                 <p className="text-[11px] text-zinc-400 truncate leading-tight">{item.title}</p>
               )}
               {item.type !== "transport" && item.region && (
-                <p className="text-[11px] text-zinc-400 truncate leading-tight">📍 {item.region}</p>
+                <p className="text-[11px] text-zinc-400 truncate leading-tight inline-flex items-center gap-1"><MapPin className="w-3 h-3" /> {item.region}</p>
               )}
               {item.rating && (
                 <div className="flex items-center gap-1 mt-0.5">
-                  <span className="text-amber-400 text-[10px]">★</span>
+                  <Star className="w-2.5 h-2.5 text-amber-400 fill-amber-400" />
                   <span className="text-[10px] font-semibold text-zinc-600">{item.rating}</span>
                   {item.reviewCount && <span className="text-[10px] text-zinc-400">({item.reviewCount >= 1000 ? (item.reviewCount/1000).toFixed(1)+"k" : item.reviewCount})</span>}
                   {item.isOpen === true && <span className="text-[10px] text-green-600 font-semibold ml-1">● Open</span>}
@@ -1880,7 +1900,7 @@ export default function PlanTab({ trip, canEdit, isMember, itineraryItems, setIt
   if (!isMember) {
     return (
       <div className="flex flex-col items-center justify-center h-full gap-3 text-center px-8">
-        <div className="text-5xl">🗺️</div>
+        <MapIcon className="w-12 h-12 text-zinc-300" strokeWidth={1.5} />
         <h3 className="font-semibold text-zinc-700">Itinerary is private</h3>
         <p className="text-sm text-zinc-400">Only trip members can view the plan.</p>
       </div>
@@ -1998,22 +2018,26 @@ export default function PlanTab({ trip, canEdit, isMember, itineraryItems, setIt
           </SortableContext>
 
           <DragOverlay>
-            {activeItem && (
+            {activeItem && (() => {
+              const overlayMeta = TYPE_META[activeItem.type] || TYPE_META.other;
+              const OverlayIcon = overlayMeta.icon;
+              return (
               <div className="bg-white border border-rose-200 rounded-xl px-3 py-2 shadow-2xl opacity-95 flex items-center gap-2">
-                <span className={`w-6 h-6 flex items-center justify-center rounded-md border text-xs flex-shrink-0 ${(TYPE_META[activeItem.type] || TYPE_META.other).color}`}>
-                  {(TYPE_META[activeItem.type] || TYPE_META.other).icon}
+                <span className={`w-6 h-6 flex items-center justify-center rounded-md border flex-shrink-0 ${overlayMeta.color}`}>
+                  <OverlayIcon className="w-3.5 h-3.5" />
                 </span>
                 <span className={`${activeItem.type === "destination" ? "text-base font-bold text-zinc-900" : "text-sm font-medium text-zinc-700"}`}>
                   {activeItem.title || (activeItem.type === "transport" && activeItem.fromStation ? `${activeItem.fromStation} → ${activeItem.toStation}` : activeItem.type)}
                 </span>
               </div>
-            )}
+              );
+            })()}
           </DragOverlay>
         </DndContext>
 
         {items.length === 0 && canEdit && (
           <div className="text-center py-12 px-4">
-            <div className="text-4xl mb-3">✈️</div>
+            <Plane className="w-10 h-10 text-zinc-300 mx-auto mb-3" strokeWidth={1.5} />
             <p className="text-sm font-medium text-zinc-600 mb-1">Start building your itinerary</p>
             <p className="text-xs text-zinc-400">Click the + above to add destinations, hotels, transport, activities and more</p>
           </div>

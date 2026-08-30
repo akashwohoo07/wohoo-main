@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
+import { UserRound, MapPin, Calendar } from "lucide-react";
 import api from "../api/axios";
 import { useAuth } from "../context/AuthContext";
 
@@ -250,7 +251,7 @@ export default function UserProfile() {
   if (error) {
     return (
       <div className="min-h-screen bg-white flex flex-col items-center justify-center gap-4">
-        <div className="text-4xl">👤</div>
+        <UserRound className="w-12 h-12 text-zinc-300" strokeWidth={1.5} />
         <p className="text-zinc-600 font-medium">{error}</p>
         <Link to="/dashboard" className="text-sm text-rose-500 hover:text-rose-600">← Back to Dashboard</Link>
       </div>
@@ -384,8 +385,8 @@ export default function UserProfile() {
                   </div>
                   <div className="p-4">
                     <p className="font-semibold text-zinc-800 text-sm">{trip.name}</p>
-                    {trip.destination?.name && <p className="text-xs text-zinc-400 mt-0.5">📍 {trip.destination.fullLabel || trip.destination.name}</p>}
-                    {trip.startDate && <p className="text-xs text-zinc-400 mt-0.5">📅 {formatDate(trip.startDate)}</p>}
+                    {trip.destination?.name && <p className="text-xs text-zinc-400 mt-0.5 flex items-center gap-1"><MapPin className="w-3 h-3" /> {trip.destination.fullLabel || trip.destination.name}</p>}
+                    {trip.startDate && <p className="text-xs text-zinc-400 mt-0.5 flex items-center gap-1"><Calendar className="w-3 h-3" /> {formatDate(trip.startDate)}</p>}
                     <div className="flex -space-x-1 mt-3">
                       {trip.members?.slice(0, 4).map((m, i) => (
                         <div key={i} className="w-6 h-6 rounded-full border-2 border-white bg-rose-200 flex items-center justify-center" style={{ zIndex: 10 - i }}>

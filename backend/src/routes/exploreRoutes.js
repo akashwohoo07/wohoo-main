@@ -143,17 +143,18 @@ function normalizePlace(p, refLat, refLng) {
     time: r.relativePublishTimeDescription || "",
   }));
 
-  // Amenities from fields
+  // Amenities from fields. We send a stable `key` (not an emoji) so the client
+  // can render a consistent Lucide icon for each amenity.
   const amenities = [];
-  if (p.restroom) amenities.push({ icon: "🚻", label: "Restroom" });
-  if (p.goodForChildren) amenities.push({ icon: "👶", label: "Kid Friendly" });
-  if (p.goodForGroups) amenities.push({ icon: "👥", label: "Groups" });
-  if (p.allowsDogs) amenities.push({ icon: "🐾", label: "Pet Friendly" });
+  if (p.restroom) amenities.push({ key: "restroom", label: "Restroom" });
+  if (p.goodForChildren) amenities.push({ key: "children", label: "Kid Friendly" });
+  if (p.goodForGroups) amenities.push({ key: "groups", label: "Groups" });
+  if (p.allowsDogs) amenities.push({ key: "pets", label: "Pet Friendly" });
   if (p.parkingOptions?.paidParkingLot || p.parkingOptions?.freeParkingLot) {
-    amenities.push({ icon: "🅿️", label: "Parking" });
+    amenities.push({ key: "parking", label: "Parking" });
   }
   if (p.accessibilityOptions?.wheelchairAccessibleEntrance) {
-    amenities.push({ icon: "♿", label: "Accessible" });
+    amenities.push({ key: "accessible", label: "Accessible" });
   }
 
   return {

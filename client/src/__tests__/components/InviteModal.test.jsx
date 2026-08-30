@@ -67,7 +67,7 @@ describe("InviteModal", () => {
       });
     });
     expect(
-      await screen.findByText("Invite sent to friend@example.com ✓")
+      await screen.findByText("Invite sent to friend@example.com")
     ).toBeInTheDocument();
     expect(defaultProps.onInvited).toHaveBeenCalled();
   });

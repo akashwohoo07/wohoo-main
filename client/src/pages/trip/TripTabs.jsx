@@ -1,4 +1,5 @@
 import { useState, useRef } from "react";
+import { NotebookPen, FolderOpen, Check } from "lucide-react";
 import api from "../../api/axios";
 
 export function NotesTab({ trip, canEdit, isMember }) {
@@ -10,7 +11,7 @@ export function NotesTab({ trip, canEdit, isMember }) {
   if (!isMember) {
     return (
       <div className="flex flex-col items-center justify-center h-full gap-3 text-center px-8">
-        <div className="text-5xl">📝</div>
+        <NotebookPen className="w-12 h-12 text-zinc-300" strokeWidth={1.5} />
         <h3 className="font-semibold text-zinc-700">Notes are private</h3>
         <p className="text-sm text-zinc-400">Only trip members can view notes.</p>
       </div>
@@ -34,8 +35,8 @@ export function NotesTab({ trip, canEdit, isMember }) {
       <div className="flex items-center justify-between px-6 py-3 border-b border-zinc-100 flex-shrink-0">
         <h3 className="text-sm font-semibold text-zinc-600">Trip Notes</h3>
         {canEdit && (
-          <span className="text-xs text-zinc-400">
-            {saving ? "Saving..." : saved ? "✓ Saved" : "Auto-saves"}
+          <span className="text-xs text-zinc-400 inline-flex items-center gap-1">
+            {saving ? "Saving..." : saved ? <><Check className="w-3 h-3" /> Saved</> : "Auto-saves"}
           </span>
         )}
       </div>
@@ -61,7 +62,7 @@ export function FilesTab({ trip, canEdit, isMember }) {
   if (!isMember) {
     return (
       <div className="flex flex-col items-center justify-center h-full gap-3 text-center px-8">
-        <div className="text-5xl">📁</div>
+        <FolderOpen className="w-12 h-12 text-zinc-300" strokeWidth={1.5} />
         <h3 className="font-semibold text-zinc-700">Files are private</h3>
         <p className="text-sm text-zinc-400">Only trip members can view files.</p>
       </div>
@@ -69,7 +70,7 @@ export function FilesTab({ trip, canEdit, isMember }) {
   }
   return (
     <div className="flex flex-col items-center justify-center h-full gap-3 text-center px-8">
-      <div className="text-5xl">📁</div>
+      <FolderOpen className="w-12 h-12 text-zinc-300" strokeWidth={1.5} />
       <h3 className="font-semibold text-zinc-700">Trip files</h3>
       <p className="text-sm text-zinc-400">
         {canEdit ? "Upload documents, tickets and bookings." : "No files added yet."}

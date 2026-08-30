@@ -4,6 +4,29 @@ Update this file whenever a feature is added, changed, or removed. Keep entries 
 
 ---
 
+## Changelog
+
+### 2026-08-30 — Icon system (emoji → Lucide)
+- **Replaced all UI emojis with Lucide icons** (`lucide-react`) for a premium, consistent look —
+  across dashboard, trip plan/explore/detail, create-trip, invites, profile, home, auth.
+- **Central icon module** `client/src/lib/icons.jsx` — single source of truth: transport-mode,
+  item-type, place-kind and amenity icon maps + `iconSvg()` (renders a Lucide component to an SVG
+  string for Mapbox marker/popup HTML, which can't hold React nodes).
+- **Backend**: `explore` route now sends a stable amenity `key` (not an emoji); the client maps it
+  to a Lucide icon (`AMENITY_ICON`).
+- Map rating pills keep the monochrome `★` glyph (clean/typographic, not an emoji); decorative
+  `✦` flourishes on the homepage are typography, left as-is.
+- Tests: client 16 + backend 88 green; production build verified.
+
+### 2026-08-30 — 14-day persistent login + auth hardening
+- Refresh token lifetime 7d → **14d**; client **silently refreshes** on load so users stay logged
+  in across tab close/reopen until manual logout.
+- Cookies default **`sameSite=lax`** (CSRF-safe; prod is same-site `api.wohoo.in`↔`wohoo.in`);
+  cross-site envs set `COOKIE_SAMESITE=none`. Logout clears with matching attributes.
+- Auth routes send **`Cache-Control: no-store`** so browsers never serve a stale OAuth redirect.
+
+---
+
 ## Current feature set (v0.1 — initial build)
 
 ### Authentication
