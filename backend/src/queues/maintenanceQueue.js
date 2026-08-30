@@ -5,8 +5,11 @@ export const MAINTENANCE_QUEUE_NAME = "maintenance";
 export const JOB_SYNC_TRIP_STATUS = "sync-trip-status";
 export const JOB_SYNC_FOLLOW_COUNTS = "sync-follow-counts";
 
-// Producer. Null when REDIS_URL is unset (no scheduled jobs in that mode).
-export const maintenanceQueue = process.env.REDIS_URL
+// Producer. Off unless REDIS_URL is set AND ENABLE_QUEUES="true". Trip statuses
+// are computed on read (Trip.applyComputedStatus), so with the cron off there is
+// no user-visible change — it just isn't persisted on a 15-min schedule. Enable
+// (with the worker) once traffic justifies the constant Redis polling.
+export const maintenanceQueue = (process.env.REDIS_URL && process.env.ENABLE_QUEUES === "true")
   ? new Queue(MAINTENANCE_QUEUE_NAME, { connection: createQueueConnection() })
   : null;
 

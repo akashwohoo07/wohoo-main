@@ -8,9 +8,11 @@ export const JOB_USERNAME = "username-confirm";
 
 export const EMAIL_QUEUE_NAME = "email";
 
-// Producer queue. Only created when REDIS_URL is configured; otherwise null and
-// callers fall back to sending inline (dev / CI / tests / single-instance).
-export const emailQueue = process.env.REDIS_URL
+// Producer queue. Off by default: async email (BullMQ) is a scale feature that
+// keeps a Redis connection polling 24/7. It's only enabled when BOTH REDIS_URL
+// is set AND ENABLE_QUEUES="true" (i.e. you're also running the worker). Without
+// it, callers fall back to sending inline — correct and cheap at low volume.
+export const emailQueue = (process.env.REDIS_URL && process.env.ENABLE_QUEUES === "true")
   ? new Queue(EMAIL_QUEUE_NAME, { connection: createQueueConnection() })
   : null;
 

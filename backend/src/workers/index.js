@@ -14,6 +14,13 @@ if (!process.env.REDIS_URL) {
   process.exit(1);
 }
 
+// Guard: the worker constantly polls Redis, so it must be opted into explicitly.
+// Keep this in sync with the queue producers (they gate on the same flag).
+if (process.env.ENABLE_QUEUES !== "true") {
+  console.error("❌ ENABLE_QUEUES must be 'true' to run workers (async queues are off). Exiting.");
+  process.exit(1);
+}
+
 // Maintenance jobs touch MongoDB, so the worker process needs a DB connection.
 await connectDB();
 
