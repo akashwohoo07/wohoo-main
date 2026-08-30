@@ -6,6 +6,16 @@ Update this file whenever a feature is added, changed, or removed. Keep entries 
 
 ## Changelog
 
+### 2026-08-30 — React Native app (Expo) + mobile auth
+- New **`mobile/`** app: Expo SDK 57 + expo-router + NativeWind + TanStack Query.
+  Core-first scope: Google login, Trips list, Create trip, Trip detail (itinerary +
+  explore nearby), Find people/follow, Profile, invite deep links (`wohoo://invite/:token`).
+- **Backend (additive, no web impact):** `POST /api/auth/google/mobile` (verify Google
+  ID token via `google-auth-library` → JWTs in JSON body); `/api/auth/refresh` + `/logout`
+  now also accept the refresh token in the body/header for mobile; `GOOGLE_MOBILE_AUDIENCES` env.
+- Same backend as web — only auth differs (Bearer tokens + secure device storage).
+- Validated: backend **95 tests**; mobile `tsc` clean + `expo-doctor` 21/21. See `mobile/README.md`.
+
 ### 2026-08-30 — Cost: background queues off by default
 - BullMQ email + maintenance queues gated behind **`ENABLE_QUEUES`** (default off). The always-on
   worker polled Redis 24/7, producing nearly all Upstash commands at near-zero traffic.

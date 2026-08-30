@@ -1,6 +1,6 @@
 import express from "express";
 import passport from "passport";
-import { googleCallback, refreshAccessToken, logout, getMe } from "../controllers/authController.js";
+import { googleCallback, googleMobileAuth, refreshAccessToken, logout, getMe } from "../controllers/authController.js";
 import { protect } from "../middleware/auth.js";
 
 const router = express.Router();
@@ -51,6 +51,9 @@ router.get(
   },
   googleCallback
 );
+
+// Mobile: native Google Sign-In → JWTs in the response body.
+router.post("/google/mobile", googleMobileAuth);
 
 router.post("/refresh", refreshAccessToken);
 router.post("/logout", logout);

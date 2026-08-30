@@ -1,6 +1,14 @@
 import jwt from "jsonwebtoken";
+import { OAuth2Client } from "google-auth-library";
 import User from "../models/User.js";
 import { hashToken } from "../utils/tokens.js";
+
+// Verifies Google ID tokens coming from the mobile app's native Google Sign-In.
+const googleClient = new OAuth2Client();
+// Accept the web client id by default; allow extra native audiences via env
+// (iOS/Android client ids) as a comma-separated list.
+const googleAudiences = (process.env.GOOGLE_MOBILE_AUDIENCES || process.env.GOOGLE_CLIENT_ID || "")
+  .split(",").map((s) => s.trim()).filter(Boolean);
 
 // Access token is short-lived (limits the blast radius if one leaks); the
 // refresh token lives 14 days so users stay logged in across tab closes/reopens
@@ -67,9 +75,60 @@ export const googleCallback = async (req, res, next) => {
   }
 };
 
+// Native Google Sign-In (mobile). The app authenticates with Google on-device,
+// obtains an ID token, and posts it here. We verify it, find/create the user,
+// and return our own JWTs in the JSON body (mobile has no cookie jar).
+export const googleMobileAuth = async (req, res, next) => {
+  try {
+    const { idToken, mode = "login" } = req.body || {};
+    if (!idToken) return res.status(400).json({ success: false, message: "idToken is required" });
+
+    let payload;
+    try {
+      const ticket = await googleClient.verifyIdToken({ idToken, audience: googleAudiences });
+      payload = ticket.getPayload();
+    } catch {
+      return res.status(401).json({ success: false, message: "Invalid Google token" });
+    }
+    if (!payload?.email) {
+      return res.status(401).json({ success: false, message: "Invalid Google token" });
+    }
+
+    const email = payload.email;
+    const googleId = payload.sub;
+
+    let user = await User.findOne({ $or: [{ googleId }, { email }] }).select("+refreshToken");
+
+    if (mode === "login" && !user) {
+      return res
+        .status(404)
+        .json({ success: false, message: "No account found. Please sign up first.", code: "no_account" });
+    }
+    if (!user) {
+      user = await User.create({
+        googleId, name: payload.name, email, avatar: payload.picture, isVerified: true,
+      });
+    } else if (!user.googleId) {
+      await User.findByIdAndUpdate(user._id, { googleId, isVerified: true });
+    }
+
+    const { accessToken, refreshToken } = generateTokens(user._id);
+    await User.findByIdAndUpdate(user._id, { refreshToken: hashToken(refreshToken) });
+    const safeUser = await User.findById(user._id).select("-refreshToken");
+
+    res.json({ success: true, accessToken, refreshToken, user: safeUser });
+  } catch (err) {
+    next(err);
+  }
+};
+
 export const refreshAccessToken = async (req, res, next) => {
   try {
-    const token = req.cookies?.refreshToken;
+    // Web sends the refresh token as an httpOnly cookie; mobile sends it in the
+    // body or the x-refresh-token header (no cookie jar).
+    const fromCookie = req.cookies?.refreshToken;
+    const token = fromCookie || req.body?.refreshToken || req.get("x-refresh-token");
+    const isMobile = !fromCookie && !!token;
     if (!token) return res.status(401).json({ success: false, message: "No refresh token" });
     const decoded = jwt.verify(token, process.env.JWT_REFRESH_SECRET);
     const user = await User.findById(decoded.id).select("+refreshToken");
@@ -79,6 +138,10 @@ export const refreshAccessToken = async (req, res, next) => {
     const { accessToken, refreshToken: newRefreshToken } = generateTokens(user._id);
     // Atomic single-field update — see googleCallback note.
     await User.findByIdAndUpdate(user._id, { refreshToken: hashToken(newRefreshToken) });
+    if (isMobile) {
+      // Return rotated tokens in the body for the app to store securely.
+      return res.json({ success: true, accessToken, refreshToken: newRefreshToken });
+    }
     setCookies(res, accessToken, newRefreshToken);
     res.json({ success: true });
   } catch (err) {
@@ -88,7 +151,8 @@ export const refreshAccessToken = async (req, res, next) => {
 
 export const logout = async (req, res, next) => {
   try {
-    const token = req.cookies?.refreshToken;
+    // Revoke server-side regardless of client type (cookie for web, body/header for mobile).
+    const token = req.cookies?.refreshToken || req.body?.refreshToken || req.get("x-refresh-token");
     if (token) {
       try {
         const decoded = jwt.verify(token, process.env.JWT_REFRESH_SECRET);

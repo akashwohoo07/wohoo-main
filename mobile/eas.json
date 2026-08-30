@@ -1,0 +1,23 @@
+{
+  "cli": { "version": ">= 12.0.0", "appVersionSource": "remote" },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "env": { "EXPO_PUBLIC_API_URL": "https://wohoo-api-beta.fly.dev" }
+    },
+    "preview": {
+      "distribution": "internal",
+      "env": { "EXPO_PUBLIC_API_URL": "https://wohoo-api-beta.fly.dev" },
+      "ios": { "simulator": false },
+      "android": { "buildType": "apk" }
+    },
+    "production": {
+      "autoIncrement": true,
+      "env": { "EXPO_PUBLIC_API_URL": "https://api.wohoo.in" }
+    }
+  },
+  "submit": {
+    "production": {}
+  }
+}
