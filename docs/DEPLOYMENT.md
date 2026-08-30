@@ -26,8 +26,16 @@ Always rebuild with the correct `VITE_API_URL` before each deploy (the `dist/` i
 MongoDB Atlas (prod cluster `wohoo-prod`, beta cluster `cluster0`) · Upstash (prod + beta Redis).
 
 **Fly apps & processes**
-- `wohoo-api` (prod): process `app` (web, scale-to-zero) + process `worker` (1 machine, always-on).
-- `wohoo-api-beta`: process `app` only (no Redis, worker off → inline email fallback).
+- `wohoo-api` (prod): process `app` (web, scale-to-zero). **Worker scaled to 0 (2026-08-30)** for cost —
+  see "Background queues" below.
+- `wohoo-api-beta`: process `app` only (worker off → inline email fallback).
+
+**Background queues (BullMQ) — off by default**
+The email + maintenance queues are gated behind `ENABLE_QUEUES` (default `false`). The always-on worker
+polled Redis 24/7 and generated ~all Upstash commands even at near-zero traffic. With queues off:
+email sends **inline** and trip status is **computed on read** (no user-visible change). `REDIS_URL`
+still powers the Google Places cache + sessions. To restore async at scale:
+`fly secrets set ENABLE_QUEUES=true -a wohoo-api` then `fly scale count worker=1 -a wohoo-api`.
 
 ### How to redeploy
 

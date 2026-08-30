@@ -6,6 +6,13 @@ Update this file whenever a feature is added, changed, or removed. Keep entries 
 
 ## Changelog
 
+### 2026-08-30 — Cost: background queues off by default
+- BullMQ email + maintenance queues gated behind **`ENABLE_QUEUES`** (default off). The always-on
+  worker polled Redis 24/7, producing nearly all Upstash commands at near-zero traffic.
+- With queues off: **email sends inline**, **trip status computed on read** — no user-visible change.
+  `REDIS_URL` still powers the Google Places cache + sessions.
+- Prod worker scaled to 0. Reversible: `ENABLE_QUEUES=true` + `fly scale count worker=1`.
+
 ### 2026-08-30 — Icon system (emoji → Lucide)
 - **Replaced all UI emojis with Lucide icons** (`lucide-react`) for a premium, consistent look —
   across dashboard, trip plan/explore/detail, create-trip, invites, profile, home, auth.
