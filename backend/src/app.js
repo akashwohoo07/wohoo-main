@@ -20,6 +20,11 @@ import followRoutes from "./routes/followRoutes.js";
 import exploreRoutes from "./routes/exploreRoutes.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 import transportRoutes from "./routes/transportRoutes.js";
+import expenseRoutes from "./routes/expenseRoutes.js";
+import notificationRoutes from "./routes/notificationRoutes.js";
+import communityRoutes from "./routes/communityRoutes.js";
+import tripChatRoutes from "./routes/tripChatRoutes.js";
+import tripNotesRoutes from "./routes/tripNotesRoutes.js";
 
 initializePassport();
 
@@ -81,6 +86,11 @@ app.use("/api", globalLimiter);
 
 app.use("/api/auth", authRoutes);
 app.use("/api/trips", tripRoutes);
+app.use("/api/trips/:tripId/expenses", expenseRoutes);
+app.use("/api/trips/:tripId/chat", tripChatRoutes);
+app.use("/api/trips/:tripId", tripNotesRoutes);
+app.use("/api/notifications", notificationRoutes);
+app.use("/api/communities", communityRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/follow", followRoutes);
 app.use("/api/explore", exploreRoutes);

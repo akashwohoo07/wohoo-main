@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { MapPin, Lock, Frown, Map as MapIcon, Clock, Globe, Phone, Pin } from "lucide-react";
+import { MapPin, Lock, Frown, Map as MapIcon, Clock, Globe, Phone, Pin, MessageCircle, Check, Loader2 } from "lucide-react";
 import api from "../../api/axios";
 import { KIND_ICON, iconSvg, AMENITY_ICON } from "../../lib/icons.jsx";
 
@@ -153,8 +153,17 @@ function PhotoCarousel({ photos, name }) {
 // PLACE CARD (grid list item)
 // ─────────────────────────────────────────────────────────────
 
-function PlaceCard({ place, onSelect, onAdd, isAdded, isHovered, onHover }) {
+function PlaceCard({ place, onSelect, onAdd, isAdded, isHovered, onHover, onShareToChat }) {
   const [imgError, setImgError] = useState(false);
+  const [shared, setShared] = useState(false);
+  const [sharing, setSharing] = useState(false);
+
+  const handleShare = async (e) => {
+    e.stopPropagation();
+    if (shared || sharing) return;
+    setSharing(true);
+    try { await onShareToChat(place); setShared(true); } catch { /* ignore */ } finally { setSharing(false); }
+  };
 
   return (
     <div
@@ -190,6 +199,17 @@ function PlaceCard({ place, onSelect, onAdd, isAdded, isHovered, onHover }) {
           <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-zinc-100 to-zinc-200">
             <MapPin className="w-10 h-10 text-zinc-400 opacity-40" strokeWidth={1.5} />
           </div>
+        )}
+
+        {/* Share to trip chat */}
+        {onShareToChat && (
+          <button
+            onClick={handleShare}
+            className={`absolute top-2 right-11 w-8 h-8 rounded-full flex items-center justify-center shadow-md transition-all z-10 ${shared ? "bg-emerald-500 text-white" : "bg-white/90 text-zinc-600 hover:bg-white hover:text-rose-500"}`}
+            title={shared ? "Shared to trip chat" : "Share to trip chat"}
+          >
+            {sharing ? <Loader2 className="w-4 h-4 animate-spin" /> : shared ? <Check className="w-4 h-4" /> : <MessageCircle className="w-4 h-4" />}
+          </button>
         )}
 
         {/* Quick add button */}
@@ -605,7 +625,7 @@ function ExploreMap({ center, places, hoveredId, selectedPlace, onMarkerClick })
 // MAIN EXPLORE TAB
 // ─────────────────────────────────────────────────────────────
 
-export default function ExploreTab({ trip, isMember, onAddToItinerary }) {
+export default function ExploreTab({ trip, isMember, onAddToItinerary, onShareToChat }) {
   const [activeCategory, setActiveCategory] = useState("stays");
   const [places, setPlaces] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -921,6 +941,7 @@ export default function ExploreTab({ trip, isMember, onAddToItinerary }) {
                         place={place}
                         onSelect={setSelectedPlace}
                         onAdd={handleAddToTrip}
+                        onShareToChat={onShareToChat}
                         isAdded={addedIds.has(place.id)}
                         isHovered={hoveredId === place.id}
                         onHover={setHoveredId}

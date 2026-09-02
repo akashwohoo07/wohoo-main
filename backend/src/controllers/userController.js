@@ -5,6 +5,7 @@ import { escapeRegex } from "../middleware/sanitize.js";
 import { analyticsReadPreference } from "../config/readPreference.js";
 import { cacheGet, cacheSet } from "../utils/cache.js";
 import Follow from "../models/Follow.js";
+import Community from "../models/Community.js";
 
 export const setUsername = async (req, res, next) => {
   try {
@@ -104,7 +105,16 @@ export const getUserProfile = async (req, res, next) => {
           .lean();
 
         Trip.applyComputedStatus(publicTrips);
-        cached = { user: profileUser, trips: publicTrips };
+
+        // Public communities created by this user (private ones stay hidden).
+        const communities = await Community.find({ owner: profileUser._id, type: "public" })
+          .select("name slug type avatar membersCount description createdAt")
+          .sort({ membersCount: -1 })
+          .limit(20)
+          .read(analyticsReadPreference())
+          .lean();
+
+        cached = { user: profileUser, trips: publicTrips, communities };
         await cacheSet(cacheKey, cached, 30);
       }
 
@@ -122,6 +132,7 @@ export const getUserProfile = async (req, res, next) => {
         success: true,
         user: cached.user,
         trips: cached.trips,
+        communities: cached.communities || [],
         isFollowing, // ✅ sent together with profile — one request, complete data
       });
     } catch (err) {

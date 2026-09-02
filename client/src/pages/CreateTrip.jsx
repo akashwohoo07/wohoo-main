@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Hand, Eye, Pencil, Sparkles } from "lucide-react";
 import api from "../api/axios";
+import UserSearchSelect from "../components/UserSearchSelect";
 
 const STEPS = ["destination", "name", "dates", "invite", "confirm"];
 const TODAY = new Date().toISOString().split("T")[0];
@@ -154,7 +155,6 @@ export default function CreateTrip() {
     setDestination(place);
     setDestQuery(place.fullLabel); // show full "City, State, Country" in input
     setSuggestions([]);
-    setName(place.primaryName);   // pre-fill trip name with just city/state name
 
     const myRequest = {};
     photoAbortRef.current = myRequest;
@@ -186,13 +186,23 @@ export default function CreateTrip() {
   const handleDiscard = () => { setShowCancelModal(false); navigate("/dashboard"); };
 
   const addInvitee = () => {
-    if (!inviteEmail || !inviteEmail.includes("@")) return;
-    if (invitees.find((i) => i.email === inviteEmail)) return;
-    setInvitees([...invitees, { email: inviteEmail, role: inviteRole }]);
+    const email = inviteEmail.trim().toLowerCase();
+    if (!email || !email.includes("@")) return;
+    if (invitees.some((i) => i.key === email)) return;
+    setInvitees((prev) => [...prev, { key: email, email, role: inviteRole }]);
     setInviteEmail("");
   };
 
-  const removeInvitee = (email) => setInvitees(invitees.filter((i) => i.email !== email));
+  const addUserInvitee = (user) => {
+    const key = `user:${user._id}`;
+    if (invitees.some((i) => i.key === key)) return;
+    setInvitees((prev) => [
+      ...prev,
+      { key, userId: user._id, username: user.username, name: user.name, avatar: user.avatar, role: inviteRole },
+    ]);
+  };
+
+  const removeInvitee = (key) => setInvitees((prev) => prev.filter((i) => i.key !== key));
 
   const handleSubmit = async () => {
     setLoading(true);
@@ -217,7 +227,12 @@ export default function CreateTrip() {
       });
       const tripId = res.data.trip._id;
       await Promise.allSettled(
-        invitees.map((inv) => api.post(`/trips/${tripId}/invite`, { email: inv.email, role: inv.role }))
+        invitees.map((inv) =>
+          api.post(
+            `/trips/${tripId}/invite`,
+            inv.username ? { username: inv.username, role: inv.role } : { email: inv.email, role: inv.role }
+          )
+        )
       );
       navigate(`/trips/${tripId}`);
     } catch (err) {
@@ -334,7 +349,7 @@ export default function CreateTrip() {
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder={destination?.primaryName || "My awesome trip..."}
+                placeholder="My awesome trip..."
                 autoFocus
                 className="w-full border-b-2 border-zinc-200 focus:border-rose-400 outline-none py-3 text-zinc-800 text-base transition-colors bg-transparent"
               />
@@ -388,7 +403,31 @@ export default function CreateTrip() {
           {step === 3 && (
             <div>
               <h2 className="text-3xl sm:text-4xl font-serif text-zinc-900 mb-8 leading-tight">Invite your friends to collaborate!</h2>
-              <div className="flex gap-2 items-end mb-2">
+
+              {/* Access level (applies to whoever you add next) */}
+              <div className="flex gap-2 mb-4">
+                {["viewer", "editor"].map((r) => (
+                  <button key={r} onClick={() => setInviteRole(r)} className={`text-xs px-3 py-1.5 rounded-full border transition-all inline-flex items-center gap-1.5 ${inviteRole === r ? "bg-rose-50 border-rose-300 text-rose-600" : "border-zinc-200 text-zinc-400 hover:border-zinc-300"}`}>
+                    {r === "viewer" ? <><Eye className="w-3.5 h-3.5" /> Can view</> : <><Pencil className="w-3.5 h-3.5" /> Can edit</>}
+                  </button>
+                ))}
+              </div>
+
+              {/* Search people by username */}
+              <UserSearchSelect
+                actionLabel="Add"
+                onSelect={addUserInvitee}
+                disabledIds={invitees.map((i) => i.userId).filter(Boolean)}
+                placeholder="Search people by username…"
+              />
+
+              {/* Or add by email */}
+              <div className="flex items-center gap-3 my-4">
+                <div className="h-px bg-zinc-100 flex-1" />
+                <span className="text-xs text-zinc-400">or invite by email</span>
+                <div className="h-px bg-zinc-100 flex-1" />
+              </div>
+              <div className="flex gap-2 items-end mb-6">
                 <input type="email" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} onKeyDown={(e) => e.key === "Enter" && addInvitee()} placeholder="Enter an email address" className="flex-1 border-b-2 border-zinc-200 focus:border-rose-400 outline-none py-3 text-zinc-800 text-sm transition-colors bg-transparent" />
                 <button onClick={addInvitee} className="text-zinc-400 hover:text-rose-500 transition-colors pb-3">
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -396,29 +435,27 @@ export default function CreateTrip() {
                   </svg>
                 </button>
               </div>
-              <div className="flex gap-2 mb-6">
-                {["viewer", "editor"].map((r) => (
-                  <button key={r} onClick={() => setInviteRole(r)} className={`text-xs px-3 py-1.5 rounded-full border transition-all inline-flex items-center gap-1.5 ${inviteRole === r ? "bg-rose-50 border-rose-300 text-rose-600" : "border-zinc-200 text-zinc-400 hover:border-zinc-300"}`}>
-                    {r === "viewer" ? <><Eye className="w-3.5 h-3.5" /> Can view</> : <><Pencil className="w-3.5 h-3.5" /> Can edit</>}
-                  </button>
-                ))}
-              </div>
-              {invitees.map((inv) => (
-                <div key={inv.email} className="flex items-center gap-3 py-3 border-b border-zinc-100">
-                  <div className="w-8 h-8 rounded-full bg-rose-100 flex items-center justify-center flex-shrink-0">
-                    <span className="text-xs font-bold text-rose-500">{inv.email[0].toUpperCase()}</span>
+
+              {invitees.map((inv) => {
+                const label = inv.username ? `@${inv.username}` : inv.email;
+                const letter = (inv.name || inv.email || "?")[0].toUpperCase();
+                return (
+                  <div key={inv.key} className="flex items-center gap-3 py-3 border-b border-zinc-100">
+                    <div className="w-8 h-8 rounded-full overflow-hidden bg-rose-100 flex items-center justify-center flex-shrink-0">
+                      {inv.avatar ? <img src={inv.avatar} alt="" className="w-full h-full object-cover" /> : <span className="text-xs font-bold text-rose-500">{letter}</span>}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-zinc-700 truncate">{inv.name || label}</p>
+                      <p className="text-xs text-zinc-400 capitalize truncate">{inv.name ? `${label} · ${inv.role}` : inv.role}</p>
+                    </div>
+                    <button onClick={() => removeInvitee(inv.key)} className="text-zinc-300 hover:text-rose-400 transition-colors">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
                   </div>
-                  <div className="flex-1">
-                    <p className="text-sm text-zinc-700">{inv.email}</p>
-                    <p className="text-xs text-zinc-400 capitalize">{inv.role}</p>
-                  </div>
-                  <button onClick={() => removeInvitee(inv.email)} className="text-zinc-300 hover:text-rose-400 transition-colors">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
-                </div>
-              ))}
+                );
+              })}
               <div className="flex gap-3 mt-10">
                 <button className="flex-1 border border-zinc-200 hover:border-zinc-300 text-zinc-600 text-sm font-medium py-3 rounded-full transition-all flex items-center justify-center gap-2">
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -491,8 +528,10 @@ export default function CreateTrip() {
                   <span className="text-xs font-bold text-rose-600">AB</span>
                 </div>
                 {invitees.slice(0, 2).map((inv) => (
-                  <div key={inv.email} className="w-7 h-7 rounded-full border-2 border-white bg-blue-200 flex items-center justify-center">
-                    <span className="text-xs font-bold text-blue-600">{inv.email[0].toUpperCase()}</span>
+                  <div key={inv.key} className="w-7 h-7 rounded-full border-2 border-white bg-blue-200 flex items-center justify-center overflow-hidden">
+                    {inv.avatar
+                      ? <img src={inv.avatar} alt="" className="w-full h-full object-cover" />
+                      : <span className="text-xs font-bold text-blue-600">{(inv.name || inv.email || "?")[0].toUpperCase()}</span>}
                   </div>
                 ))}
               </div>

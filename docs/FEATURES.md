@@ -6,6 +6,148 @@ Update this file whenever a feature is added, changed, or removed. Keep entries 
 
 ## Changelog
 
+### 2026-09-02 — Notes tab: collaborative notes feed + checklists
+- The trip **Notes** tab now has two sections (toggle): **Notes** and **Checklists**.
+- **Notes feed** (`TripNote` collection, cursor-paginated): any trip member can post a note;
+  each note is attributed to its author (avatar + @username + time), newest-first. Author or
+  trip owner can delete a note. Members-only (same live `Trip.members` check as trip chat).
+- **Checklists** (`Checklist` collection, items embedded with their own `_id`): create multiple
+  named checklists; add/delete items; check/uncheck (stores `doneBy`). On first visit with none,
+  a **default checklist with 3 starter items** is auto-seeded (guarded against double-create).
+  Item toggle/add/delete use atomic positional updates ($set/$push/$pull). Creator or owner can
+  delete a whole checklist.
+- Replaces the old single shared-textarea note. Notes tab (and Files) also made full-width —
+  the itinerary+map split is now Plan-only.
+- **Tests**: `tripNotes.test.js` (10) — note add/list/pagination/delete-authz, checklist
+  create/list/delete-authz, item add/toggle(doneBy)/edit/delete, empty→400, missing→404,
+  non-member→403.
+
+### 2026-09-02 — Per-trip discussion chat (members-only)
+- New **Chat** tab on every trip (next to Files). Backend: `TripMessage` model +
+  `tripChatController` + routes nested at `/api/trips/:tripId/chat`.
+- **Access control**: every request re-checks `Trip.members` live, so a user who leaves
+  or is removed **instantly** loses access (no stale membership). Non-members → 403.
+- **Share places from Explore**: hotels/restaurants/attractions can be shared straight
+  into the chat — the place is stored **denormalized** on the message (`sharedPlace`), so
+  the card renders instantly and we never re-hit/re-bill the Places API. Renders a compact
+  hotel/restaurant card (photo, name, category·rating, address, maps link).
+- **Reply** (WhatsApp-style): quoted `replyTo` with a preview above the reply and a
+  reply-compose bar; validated to belong to the same trip.
+- **Reactions, delete, live polling, infinite scroll** — same production patterns as the
+  community chat (embedded reactions, `?after=` returns `updated` for live reaction/delete
+  sync via `{trip, updatedAt}` index, cursor pagination up).
+- **Delete like WhatsApp**: sender deletes own; trip owner (admin) deletes any →
+  "deleted by admin" tombstone.
+- **System notice**: accepting a trip invite posts "@user joined the trip".
+- **Mobile-first interactions**: tap a message → action sheet (react / reply / delete) —
+  no hover required (works on touch and desktop).
+- **Tests**: `tripChat.test.js` (14) — access control incl. non-member 403, send/list/
+  pagination, place-share (+400), replies (+cross-trip 400), reactions, delete (sender vs
+  admin, 403), live `updated`, and the invite-accept system message.
+
+### 2026-09-02 — Chat upgrades: reactions, search, system notices, delete, infinite scroll
+- **Emoji reactions** (Slack-style): embedded `reactions: [{emoji, users[]}]` on the message
+  (bounded per message, same access path → zero extra queries). `POST :id/messages/:mid/react`
+  toggles. Reaction chips show counts + who-reacted; hover picker with a common-emoji set.
+- **In-chat search**: `GET :id/messages/search?q=` (regex, members-only) with a full-screen
+  search UI; tapping a result jumps/highlights the message. (At larger scale → Atlas Search.)
+- **System notices**: joining/leaving/removal posts an italic `type:"system"` message
+  ("@alice joined" / "left" / "was removed"), rendered as a centered pill.
+- **Delete like WhatsApp**: the **sender** can delete their own message; the **owner/admin**
+  can delete anyone's → tombstone reads *"deleted by admin"* vs *"This message was deleted"*.
+  Soft delete wipes content off the wire.
+- **Live propagation**: the `?after=` poll now returns `updated` (messages changed since the
+  cursor — reactions/deletions) via the `{community, updatedAt}` index, so reactions and
+  deletions reflect on every client within the poll interval — not just for new messages.
+- **Infinite scroll**: older history loads on scroll-up via the existing `?cursor=` pagination,
+  preserving viewport position; the "start of community" intro only shows once fully back-scrolled.
+- **Images**: model prepped (`type:"image"`, `imageUrl`) — actual upload needs object storage
+  (Cloudinary/S3), flagged as the one piece requiring infra (not a DB change).
+- **DB note**: MongoDB remains the right store at this scale; Redis+Socket.io is the path for
+  true realtime/presence/typing, and a search engine only once regex search outgrows itself.
+- **Tests**: reactions (add/toggle/accumulate/400/403), search (match + members-only),
+  system notices (joined/left), delete (sender vs admin, 403), and live `updated` polling.
+
+### 2026-09-02 — Communities + group chat (Slack/WhatsApp-style)
+- **Communities**: public (discoverable, `#name`) and private (🔒 request-to-join).
+  Models: `Community`, `CommunityMember` (separate collection so large communities
+  scale — not an embedded array), `JoinRequest` (partial-unique pending index),
+  `Message` (text / trip_share / system, with resolved `mentions`).
+- **System design**: multi-document writes use Mongoose **transactions** (create =
+  community+owner-member; join/leave/accept = member ± `membersCount`; delete cascades
+  messages/members/requests). Denormalized `membersCount`. All list endpoints are
+  cursor-paginated; authorization is re-checked per request via `CommunityMember`.
+- **API** (`/api/communities`): create, `search` (public, prefix), `mine` (owned+joined),
+  get one (private → `locked`/`requested`), join (public), request (private),
+  list/respond requests (owner/admin), members, leave, delete. Chat: `GET :id/messages`
+  (history cursor **or** `?after=` polling), `POST :id/messages`, `PATCH :id/read`.
+- **Chat**: near-real-time via short-interval polling while a chat is open (2–3s); the
+  schema/API are Socket.io-ready for a later real-time upgrade with no data changes.
+- **@mentions**: `@username` is resolved to community members only; each mention raises a
+  `mention` notification (bell badge = "tagged you"), and mentions render highlighted in chat.
+- **Trip sharing**: share a trip you belong to into a community (renders a minimal trip
+  card); a **Share** button on the trip page opens a community picker; a **Share a trip**
+  action lives in the chat composer too.
+- **Frontend**: `Communities` hub (create, my/joined lists, search with a **People ⟷
+  Community** toggle, `#`/🔒 display) and `CommunityDetail` (chat, members & requests panel,
+  leave/delete), plus a **Community** tab in the dashboard nav next to Wishlist.
+- **Tests**: `communities.test.js` (create/search/join/private-requests/accept-reject/
+  leave/delete + authz matrix) and `messages.test.js` (send/list/pagination/`after`-polling,
+  mentions incl. self/non-member, trip-share incl. 403/400, mark-read). Notification model
+  gains `community` + `mention`/`community_*` types.
+
+### 2026-09-02 — Invite by username + in-app notification system
+- **Invite by username** (alongside email). `POST /api/trips/:id/invite` now accepts
+  `{ username }` or `{ email }`; username is resolved to the account, so the canonical
+  email + `invitedUser` are stored either way. Guards: 404 unknown username, 400 self-invite,
+  409 already a member, 400 when neither is given.
+- **User search UI**: reusable `UserSearchSelect` (debounced `/api/users/search`, recommendations
+  with avatar/name/@username and an Invite/Add button) used in both the **trip invite modal**
+  (username/email toggle) and the **create-trip invite step** (search + "or add by email").
+- **Notification system** (`models/Notification.js` + `controllers/notificationController.js` +
+  `routes/notificationRoutes.js` at `/api/notifications`): `GET /` (cursor-paginated),
+  `GET /unread-count`, `PATCH /:id/read`, `PATCH /read-all`. Types: `trip_invite`,
+  `invite_accepted`, `invite_declined`. Indexed `{recipient, createdAt}` and `{recipient, read}`.
+  Stateless (badge via polling) so the app tier stays horizontally scalable.
+- **Both channels on invite**: an invited user with an account gets an in-app notification
+  *and* an email (both non-blocking, wrapped in try/catch off the response path). Accepting/
+  declining notifies the inviter and clears the invitee's invite notification.
+- **Dashboard bell** (`components/NotificationBell.jsx`): unread badge, dropdown list, one-click
+  **Accept/Decline** for invites, and **View trip**; responsive (bottom-anchored on mobile).
+- **Tests**: `notifications.test.js` — notification list/count/mark-read/mark-all/pagination/auth,
+  invite-by-username (create + notification, 404/400/409 matrix, email-to-existing-user notifies,
+  email-to-non-user does not), and accept/decline flows (member added, notification cleared,
+  inviter notified). Existing invite tests still green (backend suite: 167 tests).
+
+### 2026-09-02 — Expenses: required title + optional description
+- Each expense now has a required **`title`** (short heading) and an optional
+  **`description`** (longer note, defaults to `""`). Enforced in the model, validated
+  in the controller, surfaced in the add-expense modal (Title required, Description
+  optional textarea) and shown on expense cards / member breakdown.
+- Tests updated: 400 when title missing/blank; description optional (creates without it)
+  and stored when provided.
+
+### 2026-09-02 — Expenses & Splits (Splitwise-style)
+- New **Expenses/Splits** module for trips — a "Split" tab with two views: *Expenses*
+  (list + add) and *Splits* (per-member balances + settlement suggestions).
+- **Model** (`models/Expense.js`): money stored as integer **minor units (paise)**
+  end-to-end so split sums are always exact (no floating-point drift). Source of truth
+  for balances is each expense's resolved per-participant `owed`. Indexes on
+  `{trip, createdAt}`, `{trip, participants.user}`, `{trip, paidBy}`.
+- **Split logic** (`utils/splits.js`, pure + unit-tested): `equal`, `exact`,
+  `percentage`, and `shares` methods, using largest-remainder distribution so parts
+  always sum to the total (the 100/3 case). Greedy `settleBalances()` minimises transfers.
+- **API** (nested `/api/trips/:tripId/expenses`, all membership-checked; viewers can't mutate):
+  - `POST /` create · `GET /` list (cursor-paginated) · `PUT/DELETE /:id`
+  - `GET /balances` — single `$facet` aggregation → each member's paid/owed/net + settlements
+  - `GET /user/:userId` — that member's expenses with their per-expense share (drill-down)
+- **UI** (`client/src/pages/trip/SplitTab.jsx`): add-expense modal with live split preview
+  and validation; balances list with net (green/red) → tap a member for their breakdown;
+  responsive (bottom-sheet modal on mobile).
+- **Tests**: `splits.test.js` (pure math: rounding, validation, settlement conservation)
+  and `expenses.test.js` (create/list/balances/breakdown/update/delete across the
+  200/400/401/403/404 matrix).
+
 ### 2026-08-30 — React Native app (Expo) + mobile auth
 - New **`mobile/`** app: Expo SDK 57 + expo-router + NativeWind + TanStack Query.
   Core-first scope: Google login, Trips list, Create trip, Trip detail (itinerary +

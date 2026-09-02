@@ -10,6 +10,9 @@ import SetUsername from "./pages/SetUsername";
 import InviteAccept from "./pages/InviteAccept";
 import UserProfile from "./pages/UserProfile";
 import SearchUsers from "./pages/SearchUsers";
+import Settings from "./pages/Settings";
+import Communities from "./pages/Communities";
+import CommunityDetail from "./pages/CommunityDetail";
 import HomePage from "./pages/HomePage"; // ← added
 
 export default function App() {
@@ -27,6 +30,9 @@ export default function App() {
           <Route path="/invite/:token" element={<ProtectedRoute><InviteAccept /></ProtectedRoute>} />
           <Route path="/u/:username" element={<UserProfile />} />
           <Route path="/search" element={<ProtectedRoute><SearchUsers /></ProtectedRoute>} />
+          <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+          <Route path="/communities" element={<ProtectedRoute><Communities /></ProtectedRoute>} />
+          <Route path="/communities/:id" element={<ProtectedRoute><CommunityDetail /></ProtectedRoute>} />
         </Routes>
       </AuthProvider>
     </BrowserRouter>

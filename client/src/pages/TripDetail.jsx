@@ -1,12 +1,16 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { Plane, PlaneTakeoff, PlaneLanding, TrainFront, Bus, MapPin, Clock, Map as MapIcon, TriangleAlert, Frown, Pin } from "lucide-react";
+import { Plane, PlaneTakeoff, PlaneLanding, TrainFront, Bus, MapPin, Clock, Map as MapIcon, TriangleAlert, Frown, Pin, Share2 } from "lucide-react";
 import api from "../api/axios";
 import { useAuth } from "../context/AuthContext";
 import InviteModal from "../components/InviteModal";
 import ExploreTab from "./trip/ExploreTab";
 import PlanTab from "./trip/PlanTab";
-import { NotesTab, FilesTab } from "./trip/TripTabs";
+import { FilesTab } from "./trip/TripTabs";
+import NotesTab from "./trip/NotesTab";
+import SplitTab from "./trip/SplitTab";
+import ShareToCommunityModal from "../components/ShareToCommunityModal";
+import TripChatTab from "./trip/TripChatTab";
 import { KIND_ICON, iconSvg } from "../lib/icons.jsx";
 
 // ── Skeleton ──────────────────────────────────────────────────
@@ -22,7 +26,7 @@ function TripSkeleton() {
         <Skeleton className="w-28 h-7 rounded-lg ml-2" />
       </div>
       <div className="flex gap-2 px-6 pt-3 pb-0 border-b border-zinc-100 flex-shrink-0">
-        {["Explore", "Plan", "Notes", "Files"].map((t) => <Skeleton key={t} className="w-16 h-4 mb-3" />)}
+        {["Plan", "Explore", "Notes", "Files"].map((t) => <Skeleton key={t} className="w-16 h-4 mb-3" />)}
       </div>
       <div className="flex flex-1 overflow-hidden">
         <div className="w-[420px] border-r border-zinc-100 p-6 space-y-4 flex-shrink-0">
@@ -1027,7 +1031,7 @@ function DateModal({ trip, onClose, onSave }) {
 }
 
 // ── Main ──────────────────────────────────────────────────────
-const TABS = ["Explore", "Plan", "Notes", "Files"];
+const TABS = ["Plan", "Explore", "Expenses", "Notes", "Files", "Chat"];
 
 export default function TripDetail() {
   const { id } = useParams();
@@ -1037,10 +1041,13 @@ export default function TripDetail() {
   const [trip, setTrip] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [activeTab, setActiveTab] = useState("Explore");
+  const [activeTab, setActiveTab] = useState("Plan");
   const [showInvite, setShowInvite] = useState(false);
+  const [showShare, setShowShare] = useState(false);
   const [showDateModal, setShowDateModal] = useState(false);
   const [mapMounted, setMapMounted] = useState(false);
+  // Mount the map whenever Plan is the active tab (incl. the default landing tab).
+  useEffect(() => { if (activeTab === "Plan") setMapMounted(true); }, [activeTab]);
   const [mobileMapView, setMobileMapView] = useState(false); // mobile: toggle list vs map on Plan tab
   const [itineraryItems, setItineraryItems] = useState([]);
 
@@ -1089,6 +1096,22 @@ export default function TripDetail() {
     api.put(`/trips/${id}/itinerary`, { itinerary: newItems }).catch(console.error);
   };
 
+  // Share a place found in Explore straight into the trip chat for discussion.
+  const sharePlaceToChat = (place) =>
+    api.post(`/trips/${id}/chat`, {
+      type: "place_share",
+      sharedPlace: {
+        placeId: place.id,
+        name: place.name,
+        category: place.categories?.[0] || place.category,
+        rating: place.rating,
+        photo: place.photo,
+        address: place.address,
+        lat: place.lat,
+        lng: place.lng,
+      },
+    });
+
   if (loading) return <TripSkeleton />;
   if (error) {
     return (
@@ -1124,6 +1147,7 @@ export default function TripDetail() {
   return (
     <div className="h-[100dvh] bg-white flex flex-col overflow-hidden">
       {showInvite && <InviteModal tripId={id} onClose={() => setShowInvite(false)} onInvited={fetchTrip} />}
+      {showShare && <ShareToCommunityModal trip={trip} onClose={() => setShowShare(false)} />}
       {showDateModal && canEdit && <DateModal trip={trip} onClose={() => setShowDateModal(false)} onSave={handleSaveDates} />}
 
       {/* Top bar */}
@@ -1169,17 +1193,20 @@ export default function TripDetail() {
               Invite
             </button>
           )}
-          <button className="text-zinc-400 hover:text-zinc-600 transition-colors">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" /></svg>
-          </button>
+          {isMember && (
+            <button onClick={() => setShowShare(true)} title="Share to a community"
+              className="flex items-center gap-1.5 text-zinc-500 hover:text-rose-500 border border-zinc-200 hover:border-rose-200 text-xs font-medium px-3 py-2 rounded-full transition-all">
+              <Share2 className="w-4 h-4" /> <span className="hidden sm:inline">Share</span>
+            </button>
+          )}
         </div>
       </header>
 
       {/* Tabs */}
-      <nav className="flex items-center px-3 sm:px-6 border-b border-zinc-100 flex-shrink-0">
+      <nav className="flex items-center px-3 sm:px-6 border-b border-zinc-100 flex-shrink-0 overflow-x-auto scrollbar-none">
         {TABS.map((tab) => (
           <button key={tab} onClick={() => handleTabClick(tab)}
-            className={`relative px-4 py-3 text-sm font-medium transition-colors ${activeTab === tab ? "text-rose-500" : "text-zinc-400 hover:text-zinc-600"}`}>
+            className={`relative px-4 py-3 text-sm font-medium transition-colors whitespace-nowrap flex-shrink-0 ${activeTab === tab ? "text-rose-500" : "text-zinc-400 hover:text-zinc-600"}`}>
             {tab}
             {activeTab === tab && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-rose-500 rounded-full" />}
           </button>
@@ -1189,23 +1216,36 @@ export default function TripDetail() {
       {/* Content */}
       <div className="flex flex-1 overflow-hidden">
         {activeTab === "Explore" && (
-          <ExploreTab trip={trip} isMember={isMember} onAddToItinerary={addPlaceToItinerary} />
+          <ExploreTab trip={trip} isMember={isMember} onAddToItinerary={addPlaceToItinerary} onShareToChat={sharePlaceToChat} />
         )}
 
-        {activeTab !== "Explore" && (
+        {activeTab === "Expenses" && (
+          <SplitTab trip={trip} canEdit={canEdit} isMember={isMember} currentUser={user} />
+        )}
+
+        {activeTab === "Chat" && (
+          <TripChatTab trip={trip} isMember={isMember} currentUser={user} isOwner={myRole === "owner"} />
+        )}
+
+        {activeTab === "Notes" && (
+          <div className="w-full"><NotesTab trip={trip} canEdit={canEdit} isMember={isMember} /></div>
+        )}
+
+        {activeTab === "Files" && (
+          <div className="w-full"><FilesTab trip={trip} canEdit={canEdit} isMember={isMember} /></div>
+        )}
+
+        {/* Plan is the only tab with the itinerary + map split */}
+        {activeTab === "Plan" && (
           <>
-            {/* Left panel */}
-            <div className={`w-full md:w-[420px] flex-shrink-0 border-r border-zinc-100 overflow-hidden ${activeTab === "Plan" && mobileMapView ? "hidden md:block" : "block"}`}>
-              {activeTab === "Plan" && (
-                <PlanTab trip={trip} canEdit={canEdit} isMember={isMember}
-                  itineraryItems={itineraryItems} setItineraryItems={setItineraryItems} />
-              )}
-              {activeTab === "Notes" && <NotesTab trip={trip} canEdit={canEdit} isMember={isMember} />}
-              {activeTab === "Files" && <FilesTab trip={trip} canEdit={canEdit} isMember={isMember} />}
+            {/* Left panel — itinerary */}
+            <div className={`w-full md:w-[420px] flex-shrink-0 border-r border-zinc-100 overflow-hidden ${mobileMapView ? "hidden md:block" : "block"}`}>
+              <PlanTab trip={trip} canEdit={canEdit} isMember={isMember}
+                itineraryItems={itineraryItems} setItineraryItems={setItineraryItems} />
             </div>
 
             {/* Right panel — trip map */}
-            <div className={`flex-1 relative overflow-hidden ${activeTab === "Plan" && mobileMapView ? "block" : "hidden md:block"}`}>
+            <div className={`flex-1 relative overflow-hidden ${mobileMapView ? "block" : "hidden md:block"}`}>
               <div className="absolute inset-0" style={{ display: mapMounted && isMember ? "block" : "none" }}>
                 {mapMounted && isMember && (
                   <TripMap
@@ -1217,7 +1257,7 @@ export default function TripDetail() {
               </div>
 
               {/* Placeholder for non-Plan tabs */}
-              {activeTab !== "Plan" || !isMember ? (
+              {!isMember ? (
                 <div className="absolute inset-0 bg-zinc-50 flex flex-col items-center justify-center gap-3">
                   <div className="absolute inset-0 opacity-[0.06]"
                     style={{ backgroundImage: "radial-gradient(circle, #000 1px, transparent 1px)", backgroundSize: "24px 24px" }} />
@@ -1228,7 +1268,7 @@ export default function TripDetail() {
                       </svg>
                     </div>
                     <p className="text-zinc-500 font-medium text-sm">
-                      {activeTab === "Plan" && !isMember ? "Map is private" : "Switch to Plan to view map"}
+                      Map is private
                     </p>
                     {trip.destination?.name && (
                       <p className="text-zinc-400 text-xs mt-1 flex items-center justify-center gap-1"><MapPin className="w-3 h-3" /> {trip.destination.fullLabel || trip.destination.name}</p>

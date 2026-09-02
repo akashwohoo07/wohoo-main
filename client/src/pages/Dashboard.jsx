@@ -1,8 +1,59 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plane, Compass, Heart } from "lucide-react";
+import { Plane, Compass, Heart, Users, MoreVertical, LogOut, User as UserIcon, Search as SearchIcon, Settings as SettingsIcon } from "lucide-react";
 import api from "../api/axios";
 import { useAuth } from "../context/AuthContext";
+import NotificationBell from "../components/NotificationBell";
+
+function NavMenu({ user, onProfile, onSettings, onLogout }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+  useEffect(() => {
+    const onClick = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener("mousedown", onClick);
+    return () => document.removeEventListener("mousedown", onClick);
+  }, []);
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className="w-9 h-9 rounded-full flex items-center justify-center text-zinc-500 hover:text-zinc-700 hover:bg-zinc-100 transition-colors"
+        title="More"
+        aria-label="More options"
+      >
+        <MoreVertical className="w-5 h-5" />
+      </button>
+      {open && (
+        <div className="absolute right-0 mt-2 z-50 w-48 bg-white rounded-xl shadow-2xl border border-zinc-100 py-1.5 overflow-hidden">
+          {user?.username && (
+            <button
+              onClick={() => { setOpen(false); onProfile(); }}
+              className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-zinc-600 hover:bg-zinc-50 transition-colors"
+            >
+              <UserIcon className="w-4 h-4 text-zinc-400" />
+              View profile
+            </button>
+          )}
+          <button
+            onClick={() => { setOpen(false); onSettings(); }}
+            className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-zinc-600 hover:bg-zinc-50 transition-colors"
+          >
+            <SettingsIcon className="w-4 h-4 text-zinc-400" />
+            Settings
+          </button>
+          <div className="h-px bg-zinc-100 my-1" />
+          <button
+            onClick={() => { setOpen(false); onLogout(); }}
+            className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-rose-500 hover:bg-rose-50 transition-colors"
+          >
+            <LogOut className="w-4 h-4" />
+            Logout
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
 
 function PrivacySwitch({ isPublic, toggling, onToggle }) {
   return (
@@ -237,31 +288,32 @@ export default function Dashboard() {
 
         <div className="hidden md:flex gap-8">
           {[
-            { label: "Trips", icon: Plane, active: true },
+            { label: "Trips", icon: Plane, active: true, to: "/dashboard" },
             { label: "Discover", icon: Compass },
             { label: "Wishlist", icon: Heart },
+            { label: "Community", icon: Users, to: "/communities" },
           ].map((tab) => {
             const TabIcon = tab.icon;
             return (
-            <button key={tab.label} className={`flex items-center gap-1.5 text-sm font-medium transition-colors ${tab.active ? "text-rose-500 border-b-2 border-rose-500 pb-1" : "text-zinc-400 hover:text-zinc-600"}`}>
+            <button key={tab.label} onClick={() => tab.to && navigate(tab.to)} className={`flex items-center gap-1.5 text-sm font-medium transition-colors ${tab.active ? "text-rose-500 border-b-2 border-rose-500 pb-1" : "text-zinc-400 hover:text-zinc-600"}`}>
               <TabIcon className="w-4 h-4" /> {tab.label}
             </button>
             );
           })}
         </div>
 
-        <div className="flex items-center gap-3 sm:gap-4">
-          {invites.length > 0 && (
-            <div className="w-5 h-5 rounded-full bg-rose-500 text-white text-xs flex items-center justify-center font-bold">{invites.length}</div>
-          )}
-          <button onClick={() => navigate("/search")} className="text-zinc-400 hover:text-zinc-600 transition-colors" title="Find people">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
+        <div className="flex items-center gap-1 sm:gap-2">
+          <NotificationBell />
+          <button
+            onClick={() => navigate("/search")}
+            className="w-9 h-9 rounded-full flex items-center justify-center text-zinc-500 hover:text-zinc-700 hover:bg-zinc-100 transition-colors"
+            title="Find people"
+          >
+            <SearchIcon className="w-5 h-5" />
           </button>
           <button
             onClick={() => user?.username ? navigate(`/u/${user.username}`) : navigate("/set-username")}
-            className="flex items-center gap-2.5 hover:opacity-80 transition-opacity"
+            className="flex items-center gap-2.5 hover:opacity-80 transition-opacity ml-1 pl-1"
           >
             <div className="w-8 h-8 rounded-full bg-zinc-200 flex items-center justify-center overflow-hidden flex-shrink-0">
               {user?.avatar ? (
@@ -279,9 +331,12 @@ export default function Dashboard() {
               )}
             </div>
           </button>
-          <button onClick={async () => { await logout(); navigate("/login"); }} className="text-xs text-zinc-400 hover:text-rose-500 transition-colors">
-            Logout
-          </button>
+          <NavMenu
+            user={user}
+            onProfile={() => navigate(`/u/${user.username}`)}
+            onSettings={() => navigate("/settings")}
+            onLogout={async () => { await logout(); navigate("/login"); }}
+          />
         </div>
       </nav>
 

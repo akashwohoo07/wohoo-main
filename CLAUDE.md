@@ -1,7 +1,13 @@
 # Wohoo – Agent Guide
 
 ## What this project is
-Collaborative travel planning platform. Users create trips, build itineraries, invite collaborators (owner/editor/viewer roles), follow each other, and explore places via Google Places. Transport lookups (flights, Indian trains, PNR) are proxied server-side.
+Collaborative travel planning platform. Users create trips, build itineraries, invite collaborators (owner/editor/viewer roles) by email OR username, follow each other, and explore places via Google Places. Transport lookups (flights, Indian trains, PNR) are proxied server-side.
+
+Collaboration modules (added 2026-09-02, all membership-gated + tested): **expenses/splits**
+(Splitwise-style, integer paise), **in-app notifications** (bell), **communities + group chat**
+(public/private, reactions, @mentions, trip-share, search, admin delete), **per-trip chat**
+(place-share from Explore, replies, reactions), and **trip notes feed + checklists**. See
+`docs/CODEBASE.md` → "Collaboration modules" and `docs/FEATURES.md`.
 
 Tech: React + Vite (web), Express 5 + MongoDB + JWT (backend). React Native mobile app planned next.
 

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { UserRound, MapPin, Calendar } from "lucide-react";
+import { UserRound, MapPin, Calendar, Hash, Users } from "lucide-react";
 import api from "../api/axios";
 import { useAuth } from "../context/AuthContext";
 
@@ -258,7 +258,7 @@ export default function UserProfile() {
     );
   }
 
-  const { profile, trips, isFollowing, followersCount, followingCount } = data;
+  const { profile, trips, communities = [], isFollowing, followersCount, followingCount } = data;
 
   return (
     <div className="min-h-screen bg-white">
@@ -311,7 +311,7 @@ export default function UserProfile() {
             </button>
 
             {isOwnProfile ? (
-              <button onClick={() => navigate("/set-username")} className="text-sm bg-zinc-100 hover:bg-zinc-200 text-zinc-700 px-4 py-2 rounded-full transition-all">Edit Profile</button>
+              <button onClick={() => navigate("/settings")} className="text-sm bg-zinc-100 hover:bg-zinc-200 text-zinc-700 px-4 py-2 rounded-full transition-all">Edit Profile</button>
             ) : (
               <button
                 onClick={handleFollowClick}
@@ -405,6 +405,32 @@ export default function UserProfile() {
             </div>
           )}
         </div>
+
+        {/* Communities created by this user */}
+        {communities.length > 0 && (
+          <div className="mt-12">
+            <h2 className="text-lg font-semibold text-zinc-900 mb-5">
+              {isOwnProfile ? "Communities you created" : `${profile?.name?.split(" ")[0]}'s communities`}
+            </h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {communities.map((c) => (
+                <button
+                  key={c._id}
+                  onClick={() => navigate(`/communities/${c._id}`)}
+                  className="flex items-center gap-3 bg-white border border-zinc-100 rounded-2xl p-3 hover:border-zinc-200 hover:shadow-sm transition-all text-left"
+                >
+                  <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-rose-400 to-pink-500 text-white flex items-center justify-center font-bold flex-shrink-0">
+                    {c.avatar ? <img src={c.avatar} alt="" className="w-full h-full rounded-xl object-cover" /> : c.name.charAt(0).toUpperCase()}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-zinc-800 truncate inline-flex items-center gap-1"><Hash className="w-3.5 h-3.5 text-zinc-400" />{c.name}</p>
+                    <p className="text-xs text-zinc-400 truncate flex items-center gap-1"><Users className="w-3 h-3" /> {c.membersCount} member{c.membersCount === 1 ? "" : "s"}{c.description ? ` · ${c.description}` : ""}</p>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </main>
     </div>
   );

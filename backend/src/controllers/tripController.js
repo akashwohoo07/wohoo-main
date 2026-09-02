@@ -4,6 +4,8 @@ import Invitation from "../models/Invitation.js";
 import User from "../models/User.js";
 import { dispatchEmail, JOB_INVITE } from "../queues/emailQueue.js";
 import { analyticsReadPreference } from "../config/readPreference.js";
+import { createNotification, markInvitationNotificationsRead } from "./notificationController.js";
+import { postTripSystemMessage } from "./tripChatController.js";
 
 // ── CREATE TRIP ───────────────────────────────────────────────
 export const createTrip = async (req, res, next) => {
@@ -165,9 +167,12 @@ export const togglePrivacy = async (req, res, next) => {
 // ── INVITE MEMBER ─────────────────────────────────────────────
 export const inviteMember = async (req, res, next) => {
   try {
-    const { email, role = "viewer" } = req.body;
-    const trip = await Trip.findById(req.params.id).populate("owner", "name");
+    const { email: rawEmail, username, role = "viewer" } = req.body;
+    if (!["editor", "viewer"].includes(role)) {
+      return res.status(400).json({ success: false, message: "Invalid role" });
+    }
 
+    const trip = await Trip.findById(req.params.id).populate("owner", "name");
     if (!trip) return res.status(404).json({ success: false, message: "Trip not found" });
 
     const member = trip.members.find(
@@ -177,14 +182,33 @@ export const inviteMember = async (req, res, next) => {
       return res.status(403).json({ success: false, message: "No permission to invite" });
     }
 
-    const existingUser = await User.findOne({ email });
-    if (existingUser) {
-      const alreadyMember = trip.members.some(
-        (m) => m.user.toString() === existingUser._id.toString()
-      );
-      if (alreadyMember) {
-        return res.status(409).json({ success: false, message: "User is already a member" });
+    // Resolve the invitee by username or email. Username takes precedence.
+    // Either way we end up with a canonical `email` (for the invite record +
+    // email) and, when the person already has an account, `invitedUser`.
+    let invitedUser = null;
+    let email = null;
+    if (username) {
+      invitedUser = await User.findOne({ username: String(username).trim().toLowerCase() });
+      if (!invitedUser) {
+        return res.status(404).json({ success: false, message: "No user found with that username" });
       }
+      email = invitedUser.email;
+    } else if (rawEmail) {
+      email = String(rawEmail).trim().toLowerCase();
+      if (!email.includes("@")) {
+        return res.status(400).json({ success: false, message: "Enter a valid email" });
+      }
+      invitedUser = await User.findOne({ email });
+    } else {
+      return res.status(400).json({ success: false, message: "Provide a username or email" });
+    }
+
+    if (invitedUser && invitedUser._id.toString() === req.user._id.toString()) {
+      return res.status(400).json({ success: false, message: "You can't invite yourself" });
+    }
+
+    if (invitedUser && trip.members.some((m) => m.user.toString() === invitedUser._id.toString())) {
+      return res.status(409).json({ success: false, message: "User is already a member" });
     }
 
     const existingInvite = await Invitation.findOne({
@@ -193,7 +217,7 @@ export const inviteMember = async (req, res, next) => {
       status: "pending",
     });
     if (existingInvite) {
-      return res.status(409).json({ success: false, message: "Invite already sent to this email" });
+      return res.status(409).json({ success: false, message: "Invite already sent to this person" });
     }
 
     const token = crypto.randomBytes(32).toString("hex");
@@ -201,11 +225,30 @@ export const inviteMember = async (req, res, next) => {
       trip: trip._id,
       invitedBy: req.user._id,
       invitedEmail: email,
-      invitedUser: existingUser?._id || null,
+      invitedUser: invitedUser?._id || null,
       role,
       token,
       expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
     });
+
+    // In-app notification for the invited user (only if they have an account).
+    // Non-blocking — like email, a failure here must not fail the invite.
+    if (invitedUser) {
+      try {
+        await createNotification({
+          recipient: invitedUser._id,
+          type: "trip_invite",
+          actor: req.user._id,
+          trip: trip._id,
+          invitation: invite._id,
+          token,
+          role,
+          message: `${req.user.name} invited you to join "${trip.name}"`,
+        });
+      } catch (notifyErr) {
+        console.error("Notification create failed:", notifyErr.message);
+      }
+    }
 
     // Queue the invite email — offloaded to the worker so a slow/failing email
     // provider never blocks or fails this response.
@@ -222,8 +265,6 @@ export const inviteMember = async (req, res, next) => {
     } catch (emailErr) {
       console.error("Email dispatch failed:", emailErr.message);
     }
-
-    console.log(`📧 Invite link: ${process.env.CLIENT_URL}/invite/${token}`);
 
     res.status(201).json({ success: true, message: "Invitation sent", invite });
   } catch (err) {
@@ -278,11 +319,41 @@ export const respondToInvitation = async (req, res, next) => {
         { new: true }
       );
       await Invitation.findByIdAndUpdate(invite._id, { status: "accepted", invitedUser: req.user._id });
+      await markInvitationNotificationsRead(invite._id, req.user._id).catch(() => {});
+      // Announce the new member in the trip chat.
+      const joinerHandle = req.user.username ? `@${req.user.username}` : req.user.name;
+      await postTripSystemMessage(invite.trip, req.user._id, `${joinerHandle} joined the trip`);
+      // Let the inviter know their invite was accepted.
+      try {
+        const t = await Trip.findById(invite.trip).select("name");
+        await createNotification({
+          recipient: invite.invitedBy,
+          type: "invite_accepted",
+          actor: req.user._id,
+          trip: invite.trip,
+          message: `${req.user.name} accepted your invite to "${t?.name || "your trip"}"`,
+        });
+      } catch (e) {
+        console.error("Notification create failed:", e.message);
+      }
       return res.json({ success: true, message: "Invitation accepted", tripId: invite.trip });
     }
 
     if (action === "decline") {
       await Invitation.findByIdAndUpdate(invite._id, { status: "declined" });
+      await markInvitationNotificationsRead(invite._id, req.user._id).catch(() => {});
+      try {
+        const t = await Trip.findById(invite.trip).select("name");
+        await createNotification({
+          recipient: invite.invitedBy,
+          type: "invite_declined",
+          actor: req.user._id,
+          trip: invite.trip,
+          message: `${req.user.name} declined your invite to "${t?.name || "your trip"}"`,
+        });
+      } catch (e) {
+        console.error("Notification create failed:", e.message);
+      }
       return res.json({ success: true, message: "Invitation declined" });
     }
 

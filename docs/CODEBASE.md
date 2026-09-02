@@ -184,6 +184,33 @@ Partial unique index on `(trip, invitedEmail, status)` where status=pending — 
 | GET | `/pnr?pnr=` | JWT | PNR status via RapidAPI |
 | GET | `/geocode?q=&type=airport\|station` | JWT | Nominatim geocoding proxy |
 
+### Collaboration modules (added 2026-09-02)
+All are membership-gated (re-checked live per request) and cursor-paginated.
+
+**Expenses / splits** — `models/Expense.js` (money as integer paise), `utils/splits.js`
+(equal/exact/percentage/shares, largest-remainder). `/api/trips/:tripId/expenses`: CRUD,
+`GET /balances` (one `$facet` aggregation → net + settlements), `GET /user/:userId`.
+
+**Notifications** — `models/Notification.js` (`trip_invite`, `invite_accepted/declined`,
+`mention`, `community_request(_accepted)`, `community_join`). `/api/notifications`: list,
+`unread-count`, mark one/all read. Bell polls unread-count; invites & community requests are
+acted on inline.
+
+**Communities + group chat** — `Community` + `CommunityMember` (separate collection) +
+`JoinRequest` + `Message` (text/trip_share/image/system, embedded reactions, soft delete).
+`/api/communities`: create, `search` (public+private by name), `mine`, join/request,
+requests+respond, members, `DELETE members/:userId`, leave, delete. Chat: `messages`
+(`?after=` returns `{messages, updated}` for live reactions/deletes), `search`, react, delete.
+Multi-doc writes use transactions.
+
+**Trip chat** — `models/TripMessage.js` (place_share denormalized, replyTo, reactions,
+soft delete). `/api/trips/:tripId/chat`: list/send/react/delete. Places shared from Explore
+are stored denormalized (no Places re-fetch).
+
+**Trip notes & checklists** — `models/TripNote.js` (author-attributed feed) + `Checklist.js`
+(embedded items with own `_id`, atomic `$set/$push/$pull`). `/api/trips/:tripId/notes` and
+`/checklists` (+ `/items`).
+
 ---
 
 ## Frontend Architecture
