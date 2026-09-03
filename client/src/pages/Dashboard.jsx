@@ -4,6 +4,7 @@ import { Plane, Compass, Heart, Users, MoreVertical, LogOut, User as UserIcon, S
 import api from "../api/axios";
 import { useAuth } from "../context/AuthContext";
 import NotificationBell from "../components/NotificationBell";
+import { ADMIN_PATH } from "../lib/adminPath";
 
 function NavMenu({ user, onProfile, onSettings, onLogout, onCommunities, onAdmin }) {
   const [open, setOpen] = useState(false);
@@ -354,7 +355,7 @@ export default function Dashboard() {
             onProfile={() => navigate(`/u/${user.username}`)}
             onSettings={() => navigate("/settings")}
             onCommunities={() => navigate("/communities")}
-            onAdmin={() => navigate("/admin")}
+            onAdmin={() => navigate(`/${ADMIN_PATH}`)}
             onLogout={async () => { await logout(); navigate("/login"); }}
           />
         </div>

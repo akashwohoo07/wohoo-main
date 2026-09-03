@@ -12,6 +12,7 @@ import UserProfile from "./pages/UserProfile";
 import SearchUsers from "./pages/SearchUsers";
 import Settings from "./pages/Settings";
 import AdminRoute from "./components/AdminRoute";
+import { ADMIN_PATH } from "./lib/adminPath";
 import { lazy, Suspense } from "react";
 const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
 import Communities from "./pages/Communities";
@@ -36,7 +37,7 @@ export default function App() {
           <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
           <Route path="/communities" element={<ProtectedRoute><Communities /></ProtectedRoute>} />
           <Route path="/communities/:id" element={<ProtectedRoute><CommunityDetail /></ProtectedRoute>} />
-          <Route path="/admin" element={<AdminRoute><Suspense fallback={<div className="flex items-center justify-center h-screen text-zinc-400">Loading…</div>}><AdminDashboard /></Suspense></AdminRoute>} />
+          <Route path={`/${ADMIN_PATH}`} element={<AdminRoute><Suspense fallback={<div className="flex items-center justify-center h-screen text-zinc-400">Loading…</div>}><AdminDashboard /></Suspense></AdminRoute>} />
         </Routes>
       </AuthProvider>
     </BrowserRouter>
