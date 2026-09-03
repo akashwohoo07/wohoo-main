@@ -476,8 +476,6 @@ function FlightSearchPanel({ onFill, initialFlightNum = "", initialDate = "" }) 
   const [error, setError] = useState("");
   const [resolving, setResolving] = useState(false);
 
-  const hasKey = !!import.meta.env.VITE_AVIATIONSTACK_KEY;
-
   const handleSearch = async () => {
     if (!flightNum.trim() || !date) return;
     setLoading(true);
@@ -487,7 +485,7 @@ function FlightSearchPanel({ onFill, initialFlightNum = "", initialDate = "" }) 
     setLoading(false);
     if (data.error) {
       if (data.error === "no_key") {
-        setError("Add VITE_AVIATIONSTACK_KEY to .env to enable live flight lookup.");
+        setError("Live flight lookup is temporarily unavailable. You can still add the flight manually below.");
       } else if (data.error === "not_found") {
         setError("Flight not found. Check the flight number and date.");
       } else {
@@ -580,12 +578,6 @@ function FlightSearchPanel({ onFill, initialFlightNum = "", initialDate = "" }) 
         {loading && <div className="w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin" />}
         {loading ? "Searching..." : "Look up flight"}
       </button>
-
-      {!hasKey && !error && (
-        <p className="text-[11px] text-sky-600 text-center">
-          Live lookup needs <code className="bg-sky-100 px-1 rounded">VITE_AVIATIONSTACK_KEY</code> in .env
-        </p>
-      )}
 
       {error && (
         <div className="bg-red-50 border border-red-200 rounded-xl px-3 py-2">
