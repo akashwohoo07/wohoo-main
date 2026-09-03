@@ -119,6 +119,20 @@ describe("Analytics & Admin", () => {
       expect(codes).not.toContain("T1");
     });
 
+    it("captures city + coords from CF headers for map pins", async () => {
+      await request(app).post("/api/analytics/pageview")
+        .set("CF-IPCountry", "IN").set("CF-IPCity", "Mumbai").set("CF-IPLatitude", "19.07").set("CF-IPLongitude", "72.87")
+        .send({ path: "/", device: "mobile" });
+
+      const admin = await createAuthUser({ username: uname() });
+      process.env.ADMIN_EMAILS = admin.user.email;
+      const res = await request(app).get("/api/admin/overview").set(auth(admin.token));
+      const mumbai = res.body.traffic.cities.find((c) => c.label === "Mumbai, IN");
+      expect(mumbai).toBeTruthy();
+      expect(mumbai.lat).toBeCloseTo(19.07, 1);
+      expect(mumbai.lng).toBeCloseTo(72.87, 1);
+    });
+
     it("404 for an unknown user detail", async () => {
       const admin = await createAuthUser({ username: uname() });
       process.env.ADMIN_EMAILS = admin.user.email;

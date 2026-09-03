@@ -52,8 +52,9 @@ let regionNames;
 try { regionNames = new Intl.DisplayNames(["en"], { type: "region" }); } catch { regionNames = null; }
 const countryName = (cc) => { try { return regionNames?.of(cc) || cc; } catch { return cc; } };
 
-// World map with a bubble per country, sized by visitor count (last 30d).
-function WorldTrafficMap({ countries }) {
+// World map: a light bubble per country (from centroids) + precise city pins
+// (exact coords from Cloudflare) when available. Sized by visitor count (30d).
+function WorldTrafficMap({ countries, cities }) {
   const ref = useRef(null);
   const mapRef = useRef(null);
 
@@ -98,9 +99,43 @@ function WorldTrafficMap({ countries }) {
         popup.setLngLat(e.lngLat).setHTML(`<div style="font-size:12px;font-weight:600">${flag(p.cc)} ${p.name}</div><div style="font-size:11px;color:#71717a">${p.count} views</div>`).addTo(map);
       });
       map.on("mouseleave", "traffic-bubbles", () => { map.getCanvas().style.cursor = ""; popup.remove(); });
+
+      // City pins (precise coords)
+      const cityFc = { type: "FeatureCollection", features: [] };
+      map.addSource("cities", { type: "geojson", data: cityFc });
+      map.addLayer({
+        id: "city-pins", type: "circle", source: "cities",
+        paint: {
+          "circle-radius": ["interpolate", ["linear"], ["get", "count"], 1, 3, 100, 12],
+          "circle-color": "#10b981", "circle-opacity": 0.85, "circle-stroke-color": "#fff", "circle-stroke-width": 1,
+        },
+      });
+      const cityPopup = new mapboxgl.Popup({ closeButton: false, closeOnClick: false, offset: 8 });
+      map.on("mouseenter", "city-pins", (e) => {
+        map.getCanvas().style.cursor = "pointer";
+        const p = e.features[0].properties;
+        cityPopup.setLngLat(e.lngLat).setHTML(`<div style="font-size:12px;font-weight:600">${p.label}</div><div style="font-size:11px;color:#71717a">${p.count} views</div>`).addTo(map);
+      });
+      map.on("mouseleave", "city-pins", () => { map.getCanvas().style.cursor = ""; cityPopup.remove(); });
     };
     if (map.isStyleLoaded()) apply(); else map.once("load", apply);
   }, [countries]);
+
+  // Update city pins when data arrives.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    const set = () => {
+      const src = map.getSource("cities");
+      if (!src) return;
+      src.setData({
+        type: "FeatureCollection",
+        features: (cities || []).filter((c) => Number.isFinite(c.lat) && Number.isFinite(c.lng))
+          .map((c) => ({ type: "Feature", geometry: { type: "Point", coordinates: [c.lng, c.lat] }, properties: { label: c.label, count: c.count } })),
+      });
+    };
+    if (map.isStyleLoaded()) set(); else map.once("load", set);
+  }, [cities]);
 
   if (!MAPBOX_TOKEN) {
     return <div className="bg-white border border-zinc-100 rounded-2xl p-8 text-center text-sm text-zinc-400">Map needs VITE_MAPBOX_TOKEN.</div>;
@@ -250,14 +285,25 @@ export default function AdminDashboard() {
         {overview?.traffic && (
           <div className="grid md:grid-cols-3 gap-3">
             <div className="md:col-span-2">
-              <div className="flex items-center gap-2 mb-2"><Globe className="w-4 h-4 text-zinc-400" /><h3 className="text-sm font-semibold text-zinc-700">Where people are (30d)</h3></div>
-              <WorldTrafficMap countries={overview.traffic.countries} />
+              <div className="flex items-center gap-2 mb-2">
+                <Globe className="w-4 h-4 text-zinc-400" />
+                <h3 className="text-sm font-semibold text-zinc-700">Where people are (30d)</h3>
+                <span className="text-[11px] text-zinc-400 ml-auto">🔴 country · 🟢 city</span>
+              </div>
+              <WorldTrafficMap countries={overview.traffic.countries} cities={overview.traffic.cities} />
             </div>
             <div className="bg-white border border-zinc-100 rounded-2xl p-4">
-              <h3 className="text-sm font-semibold text-zinc-700 mb-3">Top countries</h3>
-              {(!overview.traffic.countries || overview.traffic.countries.length === 0) ? (
-                <p className="text-xs text-zinc-400 py-4 text-center">No country data yet (populates in prod via Cloudflare).</p>
-              ) : (
+              <h3 className="text-sm font-semibold text-zinc-700 mb-3">Top {overview.traffic.cities?.length ? "cities" : "countries"}</h3>
+              {overview.traffic.cities?.length ? (
+                <div className="space-y-1.5 max-h-64 overflow-y-auto">
+                  {overview.traffic.cities.map((c) => (
+                    <div key={c.label} className="flex items-center justify-between text-sm">
+                      <span className="text-zinc-600 truncate mr-2">{c.label}</span>
+                      <span className="text-zinc-400 tabular-nums flex-shrink-0">{c.count}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : overview.traffic.countries?.length ? (
                 <div className="space-y-1.5 max-h-64 overflow-y-auto">
                   {overview.traffic.countries.map((c) => (
                     <div key={c.key} className="flex items-center justify-between text-sm">
@@ -266,6 +312,8 @@ export default function AdminDashboard() {
                     </div>
                   ))}
                 </div>
+              ) : (
+                <p className="text-xs text-zinc-400 py-4 text-center">No location data yet (populates in prod via Cloudflare).</p>
               )}
             </div>
           </div>

@@ -10,9 +10,13 @@ import mongoose from "mongoose";
 const pageStatSchema = new mongoose.Schema(
   {
     day: { type: String, required: true }, // YYYY-MM-DD (UTC)
-    kind: { type: String, required: true, enum: ["total", "path", "source", "device", "country"] },
+    kind: { type: String, required: true, enum: ["total", "path", "source", "device", "country", "city"] },
     key: { type: String, required: true },
     count: { type: Number, default: 0 },
+    // Only for kind "city": approx coordinates + a display label for map pins.
+    lat: Number,
+    lng: Number,
+    label: String,
   },
   { timestamps: true }
 );

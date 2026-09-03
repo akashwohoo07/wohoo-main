@@ -78,8 +78,23 @@ export const recordPageview = async (req, res, next) => {
     // Country from Cloudflare's edge header (prod: api.wohoo.in is CF-proxied).
     // Absent in local/beta-direct → simply no country row.
     const country = String(req.headers["cf-ipcountry"] || req.body?.country || "").toUpperCase();
-    if (/^[A-Z]{2}$/.test(country) && !["XX", "T1", "ZZ"].includes(country)) {
-      ops.push(upsert("country", country));
+    const validCountry = /^[A-Z]{2}$/.test(country) && !["XX", "T1", "ZZ"].includes(country);
+    if (validCountry) ops.push(upsert("country", country));
+
+    // City + coords come from Cloudflare's "Add visitor location headers" managed
+    // transform (must be enabled in the CF dashboard). Absent otherwise → skipped.
+    const city = String(req.headers["cf-ipcity"] || "").slice(0, 80);
+    const lat = parseFloat(req.headers["cf-iplatitude"]);
+    const lng = parseFloat(req.headers["cf-iplongitude"]);
+    if (validCountry && city && Number.isFinite(lat) && Number.isFinite(lng)) {
+      const r = (n) => Math.round(n * 100) / 100; // ~1km grid (also coarsens precision)
+      ops.push({
+        updateOne: {
+          filter: { day, kind: "city", key: `${country}:${city}` },
+          update: { $inc: { count: 1 }, $set: { lat: r(lat), lng: r(lng), label: `${city}, ${country}` } },
+          upsert: true,
+        },
+      });
     }
     await PageStat.bulkWrite(ops);
     res.json({ success: true });
@@ -147,6 +162,13 @@ export const getOverview = async (req, res, next) => {
       ]),
     ]);
 
+    const cities = await PageStat.aggregate([
+      { $match: { kind: "city", day: { $gte: since30Day } } },
+      { $group: { _id: "$key", count: { $sum: "$count" }, lat: { $first: "$lat" }, lng: { $first: "$lng" }, label: { $first: "$label" } } },
+      { $sort: { count: -1 } },
+      { $limit: 200 },
+    ]);
+
     res.json({
       success: true,
       totals: {
@@ -167,6 +189,7 @@ export const getOverview = async (req, res, next) => {
         topSources: topSources.map((r) => ({ key: r._id, count: r.count })),
         devices: devices.map((r) => ({ key: r._id, count: r.count })),
         countries: countries.map((r) => ({ key: r._id, count: r.count })),
+        cities: cities.map((r) => ({ label: r.label, lat: r.lat, lng: r.lng, count: r.count })),
       },
     });
   } catch (err) {
