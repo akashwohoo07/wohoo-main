@@ -1,8 +1,15 @@
 import express from "express";
 import { protect } from "../middleware/auth.js";
+import { searchAirports } from "../utils/airports.js";
 
 const router = express.Router();
 router.use(protect);
+
+// ── Airport autocomplete (bundled OpenFlights data — free, offline) ─────────
+// GET /api/transport/airports?q=del  → [{ iata, name, city, country, lat, lng }]
+router.get("/airports", (req, res) => {
+  res.json({ success: true, airports: searchAirports(req.query.q, 8) });
+});
 
 // ── Flight lookup via AviationStack (server-side, avoids CORS/403) ──────────
 // GET /api/transport/flight?flightNum=6E984&date=2026-05-26

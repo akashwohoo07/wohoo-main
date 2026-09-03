@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import api from "../../api/axios";
+import AirportInput from "../../components/AirportInput";
 import {
   DndContext, closestCenter, PointerSensor,
   useSensor, useSensors, DragOverlay,
@@ -1488,19 +1489,39 @@ function ItemModal({ item, tripStartDate, tripEndDate, tripDestination, onSave, 
               <>
                 <div>
                   <label className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider mb-1 block">
-                    {form.transportMode === "flight" ? "Departure airport / city" : form.transportMode === "train" ? "Departure station / city" : "From"}
+                    {form.transportMode === "flight" ? "Departure airport" : form.transportMode === "train" ? "Departure station / city" : "From"}
                   </label>
-                  <input value={form.fromStation} onChange={(e) => set("fromStation", e.target.value)}
-                    placeholder={form.transportMode === "flight" ? "e.g. Delhi (DEL) / IGI Airport" : form.transportMode === "train" ? "e.g. New Delhi / NDLS" : "Departure point"}
-                    className="w-full text-sm border-b border-zinc-200 focus:border-rose-400 outline-none py-1.5 text-zinc-700 bg-transparent placeholder-zinc-300" />
+                  {form.transportMode === "flight" ? (
+                    <AirportInput
+                      value={form.fromStation}
+                      onChange={(v) => set("fromStation", v)}
+                      onSelect={(a) => setForm((f) => ({ ...f, fromStation: a.label, fromLat: a.lat, fromLng: a.lng }))}
+                      placeholder="Search airport — Delhi, DEL, IGI…"
+                      className="w-full text-sm border-b border-zinc-200 focus:border-rose-400 outline-none py-1.5 pr-5 text-zinc-700 bg-transparent placeholder-zinc-300"
+                    />
+                  ) : (
+                    <input value={form.fromStation} onChange={(e) => set("fromStation", e.target.value)}
+                      placeholder={form.transportMode === "train" ? "e.g. New Delhi / NDLS" : "Departure point"}
+                      className="w-full text-sm border-b border-zinc-200 focus:border-rose-400 outline-none py-1.5 text-zinc-700 bg-transparent placeholder-zinc-300" />
+                  )}
                 </div>
                 <div>
                   <label className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider mb-1 block">
-                    {form.transportMode === "flight" ? "Arrival airport / city" : form.transportMode === "train" ? "Arrival station / city" : "To"}
+                    {form.transportMode === "flight" ? "Arrival airport" : form.transportMode === "train" ? "Arrival station / city" : "To"}
                   </label>
-                  <input value={form.toStation} onChange={(e) => set("toStation", e.target.value)}
-                    placeholder={form.transportMode === "flight" ? "e.g. Mumbai (BOM) / CSIA" : form.transportMode === "train" ? "e.g. Chandigarh / CDG" : "Arrival point"}
-                    className="w-full text-sm border-b border-zinc-200 focus:border-rose-400 outline-none py-1.5 text-zinc-700 bg-transparent placeholder-zinc-300" />
+                  {form.transportMode === "flight" ? (
+                    <AirportInput
+                      value={form.toStation}
+                      onChange={(v) => set("toStation", v)}
+                      onSelect={(a) => setForm((f) => ({ ...f, toStation: a.label, toLat: a.lat, toLng: a.lng }))}
+                      placeholder="Search airport — Mumbai, BOM, CSIA…"
+                      className="w-full text-sm border-b border-zinc-200 focus:border-rose-400 outline-none py-1.5 pr-5 text-zinc-700 bg-transparent placeholder-zinc-300"
+                    />
+                  ) : (
+                    <input value={form.toStation} onChange={(e) => set("toStation", e.target.value)}
+                      placeholder={form.transportMode === "train" ? "e.g. Chandigarh / CDG" : "Arrival point"}
+                      className="w-full text-sm border-b border-zinc-200 focus:border-rose-400 outline-none py-1.5 text-zinc-700 bg-transparent placeholder-zinc-300" />
+                  )}
                 </div>
                 <div>
                   <label className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider mb-1 block">Service / flight / train name</label>
