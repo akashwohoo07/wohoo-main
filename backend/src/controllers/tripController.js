@@ -124,11 +124,25 @@ export const updateItinerary = async (req, res, next) => {
         title: item.title || "",
         date: item.date || "",
         endDate: item.endDate || "",
+        time: item.time || "",
+        endTime: item.endTime || "",
         isSubDest: item.isSubDest || false,
         placeId: item.placeId || "",
-        lat: item.lat || null,
-        lng: item.lng || null,
+        lat: item.lat ?? null,
+        lng: item.lng ?? null,
         region: item.region || "",
+        price: item.price || "",
+        currency: item.currency || "",
+        notes: item.notes || "",
+        // transport-leg fields
+        transportMode: item.transportMode || "",
+        fromStation: item.fromStation || "",
+        toStation: item.toStation || "",
+        fromLat: item.fromLat ?? null,
+        fromLng: item.fromLng ?? null,
+        toLat: item.toLat ?? null,
+        toLng: item.toLng ?? null,
+        bookingRef: item.bookingRef || "",
       }));
   
       await trip.save();

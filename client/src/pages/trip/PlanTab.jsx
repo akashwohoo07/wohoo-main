@@ -377,35 +377,35 @@ function useHotelSearch(query, bias = null) {
 // Search flight by flight number + date using AviationStack (free tier)
 // Returns: { airline, flightNum, depAirport, depIATA, depTime, arrAirport, arrIATA, arrTime, status, duration }
 async function searchFlight(flightNum, date) {
-  const key = import.meta.env.VITE_AVIATIONSTACK_KEY;
-  if (!key) return { error: "no_key" };
-  // Clean: "6E-201" → "6E201", "AI 101" → "AI101"
+  // Route through our backend proxy — never call AviationStack from the browser
+  // (that exposes the API key and gets blocked with a 403 from mixed-content +
+  // referrer restrictions). The proxy also handles the free-plan flight_date
+  // fallback so lookups still resolve.
   const clean = flightNum.replace(/[\s-]/g, "").toUpperCase();
   try {
-    const url = `https://api.aviationstack.com/v1/flights?access_key=${key}&flight_iata=${clean}&flight_date=${date}&limit=1`;
-    const res = await fetch(url);
-    const data = await res.json();
-    if (data.error) return { error: data.error.message || "api_error" };
-    const f = data.data?.[0];
-    if (!f) return { error: "not_found" };
+    const { data } = await api.get(
+      `/transport/flight?flightNum=${encodeURIComponent(clean)}&date=${encodeURIComponent(date)}`
+    );
+    if (!data?.success || !data.flight) return { error: data?.error || "not_found" };
+    const f = data.flight;
     return {
-      airline: f.airline?.name || "",
-      flightNum: f.flight?.iata || clean,
-      depAirport: f.departure?.airport || "",
-      depIATA: f.departure?.iata || "",
-      depCity: f.departure?.timezone?.split("/")[1]?.replace("_", " ") || "",
-      depTime: f.departure?.scheduled || "",
+      airline: f.airline || "",
+      flightNum: f.flightNum || clean,
+      depAirport: f.depAirport || "",
+      depIATA: f.depIATA || "",
+      depCity: "",
+      depTime: f.depTime || "",
       depLat: null, depLng: null,
-      arrAirport: f.arrival?.airport || "",
-      arrIATA: f.arrival?.iata || "",
-      arrCity: f.arrival?.timezone?.split("/")[1]?.replace("_", " ") || "",
-      arrTime: f.arrival?.scheduled || "",
+      arrAirport: f.arrAirport || "",
+      arrIATA: f.arrIATA || "",
+      arrCity: "",
+      arrTime: f.arrTime || "",
       arrLat: null, arrLng: null,
-      status: f.flight_status || "",
+      status: f.status || "",
       duration: null,
     };
-  } catch {
-    return { error: "network_error" };
+  } catch (err) {
+    return { error: err.response?.data?.error || "network_error" };
   }
 }
 

@@ -21,15 +21,29 @@ const tripSchema = new mongoose.Schema(
         {
           _id: false, // ✅ let MongoDB auto-generate, don't send from frontend
           clientId: String, // ✅ store frontend temp ID here instead
-          type: { type: String, enum: ["destination", "heading", "activity"], default: "destination" },
+          type: { type: String, enum: ["destination", "heading", "activity", "transport"], default: "destination" },
           title: { type: String, default: "" }, // ✅ not required — allow empty while typing
           date: String,
           endDate: String,
+          time: String,
+          endTime: String,
           isSubDest: { type: Boolean, default: false },
           placeId: String,
           lat: Number,
           lng: Number,
           region: String,
+          price: String,
+          currency: String,
+          notes: String,
+          // transport-leg fields (type === "transport")
+          transportMode: String,
+          fromStation: String,
+          toStation: String,
+          fromLat: Number,
+          fromLng: Number,
+          toLat: Number,
+          toLng: Number,
+          bookingRef: String,
           order: Number,
         },
       ],

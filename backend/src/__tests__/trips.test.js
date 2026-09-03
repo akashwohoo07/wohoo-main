@@ -224,6 +224,40 @@ describe("Trips API", () => {
       expect(res.status).toBe(200);
       expect(res.body.itinerary).toHaveLength(2);
     });
+
+    it("persists a transport (flight) leg with its route coords", async () => {
+      const { user, token } = await createAuthUser();
+      const trip = await Trip.create({
+        name: "Trip",
+        destination: sampleDestination,
+        owner: user._id,
+        members: [{ user: user._id, role: "owner" }],
+      });
+      const itinerary = [
+        {
+          type: "transport",
+          transportMode: "flight",
+          title: "6E285 · IndiGo",
+          fromStation: "Delhi (DEL)",
+          toStation: "Goa (GOI)",
+          fromLat: 28.5665, fromLng: 77.1031,
+          toLat: 15.3808, toLng: 73.8314,
+          date: "2026-12-01", time: "22:45",
+          bookingRef: "ABC123",
+        },
+      ];
+      const res = await request(app)
+        .put(`/api/trips/${trip._id}/itinerary`)
+        .set("Authorization", `Bearer ${token}`)
+        .send({ itinerary });
+      expect(res.status).toBe(200);
+      const leg = res.body.itinerary[0];
+      expect(leg.type).toBe("transport");
+      expect(leg.transportMode).toBe("flight");
+      expect(leg.fromLat).toBeCloseTo(28.5665);
+      expect(leg.toLng).toBeCloseTo(73.8314);
+      expect(leg.bookingRef).toBe("ABC123");
+    });
   });
 
   describe("PATCH /api/trips/:id/privacy", () => {
