@@ -468,7 +468,7 @@ async function searchTrain(query, searchType) {
 }
 
 // ── Flight Search Panel ────────────────────────────────────
-function FlightSearchPanel({ onFill, initialFlightNum = "", initialDate = "" }) {
+function FlightSearchPanel({ onSave, initialFlightNum = "", initialDate = "" }) {
   const [flightNum, setFlightNum] = useState(initialFlightNum);
   const [date, setDate] = useState(initialDate);
   const [loading, setLoading] = useState(false);
@@ -523,7 +523,7 @@ function FlightSearchPanel({ onFill, initialFlightNum = "", initialDate = "" }) 
       endDate = d.toISOString().split("T")[0];
     }
 
-    onFill({
+    onSave({
       title: `${result.flightNum}${result.airline ? " · " + result.airline : ""}`,
       fromStation: dep?.label || result.depAirport || result.depIATA,
       toStation: arr?.label || result.arrAirport || result.arrIATA,
@@ -630,7 +630,7 @@ function FlightSearchPanel({ onFill, initialFlightNum = "", initialDate = "" }) 
             className="w-full bg-sky-500 hover:bg-sky-600 disabled:opacity-50 text-white text-xs font-semibold py-2 rounded-xl transition-all flex items-center justify-center gap-2"
           >
             {resolving && <div className="w-3 h-3 border-2 border-white/40 border-t-white rounded-full animate-spin" />}
-            {resolving ? "Resolving airports..." : "Use this flight →"}
+            {resolving ? "Adding flight..." : "Save flight to trip"}
           </button>
         </div>
       )}
@@ -639,7 +639,7 @@ function FlightSearchPanel({ onFill, initialFlightNum = "", initialDate = "" }) 
 }
 
 // ── Train Search Panel ─────────────────────────────────────
-function TrainSearchPanel({ onFill, initialQuery = "", initialDate = "" }) {
+function TrainSearchPanel({ onFill, onSave, initialQuery = "", initialDate = "" }) {
   const [searchType, setSearchType] = useState("number"); // "number" | "pnr" | "name"
   const [query, setQuery] = useState(initialQuery);
   const [date, setDate] = useState(initialDate);
@@ -695,7 +695,7 @@ function TrainSearchPanel({ onFill, initialQuery = "", initialDate = "" }) {
     ]);
     setResolving(false);
 
-    onFill({
+    onSave({
       title: result.trainNum ? `${result.trainName || ""} (${result.trainNum})`.trim() : result.trainName || query,
       fromStation: from?.label || result.from || "",
       toStation: to?.label || result.to || "",
@@ -811,7 +811,7 @@ function TrainSearchPanel({ onFill, initialQuery = "", initialDate = "" }) {
             className="w-full bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white text-xs font-semibold py-2 rounded-xl transition-all flex items-center justify-center gap-2"
           >
             {resolving && <div className="w-3 h-3 border-2 border-white/40 border-t-white rounded-full animate-spin" />}
-            {resolving ? "Resolving stations..." : "Use this train →"}
+            {resolving ? "Adding train..." : "Save train to trip"}
           </button>
         </div>
       )}
@@ -1306,10 +1306,22 @@ function ItemModal({ item, tripStartDate, tripEndDate, tripDestination, onSave, 
     onSave({ ...form, title, clientId: form.clientId || form._id || makeCid() });
   };
 
-  // Called when flight/train search fills in data
+  // Called when flight/train search fills in data (manual-edit path)
   const handleSearchFill = (data) => {
     setForm((f) => ({ ...f, ...data }));
     setTransportSearch("manual");
+  };
+
+  // One-step: a looked-up flight/train saves straight to the itinerary — no
+  // detour through the manual form.
+  const handleSearchSave = (data) => {
+    const merged = { ...form, ...data };
+    const title =
+      data.title?.trim() ||
+      merged.title?.trim() ||
+      (merged.fromStation && merged.toStation ? `${merged.fromStation} → ${merged.toStation}` : "") ||
+      "Trip leg";
+    onSave({ ...merged, title, clientId: merged.clientId || merged._id || makeCid() });
   };
 
   const tm = TRANSPORT_MODES.find((m) => m.id === form.transportMode);
@@ -1483,7 +1495,7 @@ function ItemModal({ item, tripStartDate, tripEndDate, tripDestination, onSave, 
 
                 {transportSearch === "flight" && form.transportMode === "flight" && (
                   <FlightSearchPanel
-                    onFill={handleSearchFill}
+                    onSave={handleSearchSave}
                     initialFlightNum={form.title}
                     initialDate={form.date}
                   />
@@ -1491,6 +1503,7 @@ function ItemModal({ item, tripStartDate, tripEndDate, tripDestination, onSave, 
                 {transportSearch === "train" && form.transportMode === "train" && (
                   <TrainSearchPanel
                     onFill={handleSearchFill}
+                    onSave={handleSearchSave}
                     initialQuery={form.title || form.bookingRef}
                     initialDate={form.date}
                   />
