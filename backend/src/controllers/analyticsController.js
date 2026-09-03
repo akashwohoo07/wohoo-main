@@ -69,12 +69,19 @@ export const recordPageview = async (req, res, next) => {
     const upsert = (kind, key) => ({
       updateOne: { filter: { day, kind, key }, update: { $inc: { count: 1 } }, upsert: true },
     });
-    await PageStat.bulkWrite([
+    const ops = [
       upsert("total", "all"),
       upsert("path", path),
       upsert("device", device),
       upsert("source", source),
-    ]);
+    ];
+    // Country from Cloudflare's edge header (prod: api.wohoo.in is CF-proxied).
+    // Absent in local/beta-direct → simply no country row.
+    const country = String(req.headers["cf-ipcountry"] || req.body?.country || "").toUpperCase();
+    if (/^[A-Z]{2}$/.test(country) && !["XX", "T1", "ZZ"].includes(country)) {
+      ops.push(upsert("country", country));
+    }
+    await PageStat.bulkWrite(ops);
     res.json({ success: true });
   } catch (err) {
     // Analytics must never break navigation; swallow (incl. upsert races).
@@ -125,12 +132,19 @@ export const getOverview = async (req, res, next) => {
       ]),
     ]);
 
-    // Traffic (first-party): today's pageviews + top pages/sources/devices (7d).
-    const [pvToday, topPaths, topSources, devices] = await Promise.all([
+    // Traffic (first-party): today's pageviews + top pages/sources/devices (7d),
+    // and per-country visits (30d) for the world map.
+    const [pvToday, topPaths, topSources, devices, countries] = await Promise.all([
       PageStat.findOne({ day: today, kind: "total", key: "all" }).lean(),
       topN("path"),
       topN("source"),
       topN("device"),
+      PageStat.aggregate([
+        { $match: { kind: "country", day: { $gte: since30Day } } },
+        { $group: { _id: "$key", count: { $sum: "$count" } } },
+        { $sort: { count: -1 } },
+        { $limit: 60 },
+      ]),
     ]);
 
     res.json({
@@ -152,6 +166,7 @@ export const getOverview = async (req, res, next) => {
         topPaths: topPaths.map((r) => ({ key: r._id, count: r.count })),
         topSources: topSources.map((r) => ({ key: r._id, count: r.count })),
         devices: devices.map((r) => ({ key: r._id, count: r.count })),
+        countries: countries.map((r) => ({ key: r._id, count: r.count })),
       },
     });
   } catch (err) {

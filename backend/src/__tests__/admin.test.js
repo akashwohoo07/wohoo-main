@@ -106,6 +106,19 @@ describe("Analytics & Admin", () => {
       expect(res.body.traffic.devices.map((d) => d.key)).toEqual(expect.arrayContaining(["mobile", "desktop"]));
     });
 
+    it("captures visitor country from the CF-IPCountry header for the world map", async () => {
+      await request(app).post("/api/analytics/pageview").set("CF-IPCountry", "IN").send({ path: "/", device: "mobile" });
+      await request(app).post("/api/analytics/pageview").set("CF-IPCountry", "US").send({ path: "/", device: "desktop" });
+      await request(app).post("/api/analytics/pageview").set("CF-IPCountry", "T1").send({ path: "/", device: "desktop" }); // tor/invalid → ignored
+
+      const admin = await createAuthUser({ username: uname() });
+      process.env.ADMIN_EMAILS = admin.user.email;
+      const res = await request(app).get("/api/admin/overview").set(auth(admin.token));
+      const codes = res.body.traffic.countries.map((c) => c.key);
+      expect(codes).toEqual(expect.arrayContaining(["IN", "US"]));
+      expect(codes).not.toContain("T1");
+    });
+
     it("404 for an unknown user detail", async () => {
       const admin = await createAuthUser({ username: uname() });
       process.env.ADMIN_EMAILS = admin.user.email;

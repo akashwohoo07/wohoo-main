@@ -1,5 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
+import mapboxgl from "mapbox-gl";
+import "mapbox-gl/dist/mapbox-gl.css";
+import { COUNTRY_CENTROIDS } from "../lib/countryCentroids";
 import {
   ArrowLeft, Users, UserPlus, Activity, Clock, Plane, MessagesSquare, Search, Loader2, X, TrendingUp, Eye, Globe,
 } from "lucide-react";
@@ -41,6 +44,68 @@ function BarChart({ data, valueKey, label, color = "bg-rose-400" }) {
       )}
     </div>
   );
+}
+
+const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN;
+const flag = (cc) => (/^[A-Z]{2}$/.test(cc) ? cc.replace(/./g, (c) => String.fromCodePoint(127397 + c.charCodeAt())) : "🏳️");
+let regionNames;
+try { regionNames = new Intl.DisplayNames(["en"], { type: "region" }); } catch { regionNames = null; }
+const countryName = (cc) => { try { return regionNames?.of(cc) || cc; } catch { return cc; } };
+
+// World map with a bubble per country, sized by visitor count (last 30d).
+function WorldTrafficMap({ countries }) {
+  const ref = useRef(null);
+  const mapRef = useRef(null);
+
+  useEffect(() => {
+    if (!MAPBOX_TOKEN || !ref.current || mapRef.current) return;
+    mapboxgl.accessToken = MAPBOX_TOKEN;
+    mapRef.current = new mapboxgl.Map({
+      container: ref.current,
+      style: "mapbox://styles/mapbox/light-v11",
+      center: [30, 25],
+      zoom: 0.9,
+      attributionControl: false,
+      projection: "mercator",
+    });
+    return () => { mapRef.current?.remove(); mapRef.current = null; };
+  }, []);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    const features = (countries || [])
+      .filter((c) => COUNTRY_CENTROIDS[c.key])
+      .map((c) => ({ type: "Feature", geometry: { type: "Point", coordinates: COUNTRY_CENTROIDS[c.key] }, properties: { cc: c.key, name: countryName(c.key), count: c.count } }));
+    const fc = { type: "FeatureCollection", features };
+    const max = Math.max(1, ...features.map((f) => f.properties.count));
+
+    const apply = () => {
+      if (map.getSource("traffic")) { map.getSource("traffic").setData(fc); return; }
+      map.addSource("traffic", { type: "geojson", data: fc });
+      map.addLayer({
+        id: "traffic-bubbles", type: "circle", source: "traffic",
+        paint: {
+          "circle-radius": ["interpolate", ["linear"], ["get", "count"], 1, 5, max, 26],
+          "circle-color": "#f43f5e", "circle-opacity": 0.5,
+          "circle-stroke-color": "#e11d48", "circle-stroke-width": 1,
+        },
+      });
+      const popup = new mapboxgl.Popup({ closeButton: false, closeOnClick: false, offset: 10 });
+      map.on("mouseenter", "traffic-bubbles", (e) => {
+        map.getCanvas().style.cursor = "pointer";
+        const p = e.features[0].properties;
+        popup.setLngLat(e.lngLat).setHTML(`<div style="font-size:12px;font-weight:600">${flag(p.cc)} ${p.name}</div><div style="font-size:11px;color:#71717a">${p.count} views</div>`).addTo(map);
+      });
+      map.on("mouseleave", "traffic-bubbles", () => { map.getCanvas().style.cursor = ""; popup.remove(); });
+    };
+    if (map.isStyleLoaded()) apply(); else map.once("load", apply);
+  }, [countries]);
+
+  if (!MAPBOX_TOKEN) {
+    return <div className="bg-white border border-zinc-100 rounded-2xl p-8 text-center text-sm text-zinc-400">Map needs VITE_MAPBOX_TOKEN.</div>;
+  }
+  return <div ref={ref} className="w-full h-72 rounded-2xl overflow-hidden border border-zinc-100" />;
 }
 
 // Ranked list with proportional bars (top pages / sources / devices).
@@ -178,6 +243,31 @@ export default function AdminDashboard() {
             <TrafficList icon={Eye} title="Top pages (7d)" items={overview.traffic.topPaths} />
             <TrafficList icon={Globe} title="Traffic sources (7d)" items={overview.traffic.topSources} />
             <TrafficList icon={Activity} title="Devices (7d)" items={overview.traffic.devices} />
+          </div>
+        )}
+
+        {/* Where people are (30d, by country) */}
+        {overview?.traffic && (
+          <div className="grid md:grid-cols-3 gap-3">
+            <div className="md:col-span-2">
+              <div className="flex items-center gap-2 mb-2"><Globe className="w-4 h-4 text-zinc-400" /><h3 className="text-sm font-semibold text-zinc-700">Where people are (30d)</h3></div>
+              <WorldTrafficMap countries={overview.traffic.countries} />
+            </div>
+            <div className="bg-white border border-zinc-100 rounded-2xl p-4">
+              <h3 className="text-sm font-semibold text-zinc-700 mb-3">Top countries</h3>
+              {(!overview.traffic.countries || overview.traffic.countries.length === 0) ? (
+                <p className="text-xs text-zinc-400 py-4 text-center">No country data yet (populates in prod via Cloudflare).</p>
+              ) : (
+                <div className="space-y-1.5 max-h-64 overflow-y-auto">
+                  {overview.traffic.countries.map((c) => (
+                    <div key={c.key} className="flex items-center justify-between text-sm">
+                      <span className="text-zinc-600 truncate mr-2">{flag(c.key)} {countryName(c.key)}</span>
+                      <span className="text-zinc-400 tabular-nums flex-shrink-0">{c.count}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         )}
 
