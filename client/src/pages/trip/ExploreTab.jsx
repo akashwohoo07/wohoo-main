@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { MapPin, Lock, Frown, Map as MapIcon, Clock, Globe, Phone, Pin, MessageCircle, Check, Loader2 } from "lucide-react";
+import { MapPin, Lock, Frown, Map as MapIcon, Clock, Globe, Phone, Pin, MessageCircle, Check, Loader2, Home, Users, ExternalLink } from "lucide-react";
 import api from "../../api/axios";
 import { KIND_ICON, iconSvg, AMENITY_ICON } from "../../lib/icons.jsx";
 
@@ -50,6 +50,100 @@ async function geocodeCity(name) {
   const data = await res.json();
   if (!data?.[0]) return null;
   return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+}
+
+function toDateInput(d) {
+  if (!d) return "";
+  const dt = new Date(d);
+  return isNaN(dt) ? "" : dt.toISOString().split("T")[0];
+}
+
+// Airbnb (and other stay providers) have no legitimate public listings API, so
+// we deep-link into the provider's OWN search results, prefilled with the place,
+// trip dates and guests. Opens in a new tab — no scraping, no API key, no cost.
+const STAY_PROVIDERS = [
+  {
+    id: "airbnb",
+    label: "Airbnb",
+    color: "bg-[#FF385C] hover:bg-[#e11d48]",
+    build: ({ loc, checkin, checkout, guests }) => {
+      const p = new URLSearchParams();
+      if (checkin) p.set("checkin", checkin);
+      if (checkout) p.set("checkout", checkout);
+      if (guests) p.set("adults", String(guests));
+      const qs = p.toString();
+      return `https://www.airbnb.com/s/${encodeURIComponent(loc)}/homes${qs ? `?${qs}` : ""}`;
+    },
+  },
+  {
+    id: "booking",
+    label: "Booking.com",
+    color: "bg-[#003580] hover:bg-[#00224f]",
+    build: ({ loc, checkin, checkout, guests }) => {
+      const p = new URLSearchParams({ ss: loc });
+      if (checkin) p.set("checkin", checkin);
+      if (checkout) p.set("checkout", checkout);
+      if (guests) p.set("group_adults", String(guests));
+      return `https://www.booking.com/searchresults.html?${p.toString()}`;
+    },
+  },
+  {
+    id: "google",
+    label: "Google Hotels",
+    color: "bg-zinc-800 hover:bg-zinc-900",
+    build: ({ loc }) => `https://www.google.com/travel/search?q=${encodeURIComponent(`hotels in ${loc}`)}`,
+  },
+];
+
+// Deep-link "find a stay" bar shown in the Stays category.
+function StayFinder({ location, tripStart, tripEnd }) {
+  const [checkin, setCheckin] = useState(toDateInput(tripStart));
+  const [checkout, setCheckout] = useState(toDateInput(tripEnd));
+  const [guests, setGuests] = useState(2);
+  const loc = (location || "").trim();
+
+  const open = (provider) => {
+    if (!loc) return;
+    window.open(provider.build({ loc, checkin, checkout, guests }), "_blank", "noopener,noreferrer");
+  };
+
+  return (
+    <div className="bg-gradient-to-br from-rose-50 to-sky-50 border border-rose-100 rounded-2xl p-3 space-y-2.5 mb-3">
+      <div className="flex items-center gap-2">
+        <Home className="w-4 h-4 text-rose-500" />
+        <p className="text-sm font-semibold text-zinc-800">Find a place to stay{loc ? ` in ${loc}` : ""}</p>
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        <div>
+          <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wide mb-0.5 block">Check-in</label>
+          <input type="date" value={checkin} onChange={(e) => setCheckin(e.target.value)}
+            className="w-full text-xs border border-zinc-200 focus:border-rose-400 outline-none px-2 py-1.5 rounded-lg bg-white text-zinc-700" />
+        </div>
+        <div>
+          <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wide mb-0.5 block">Check-out</label>
+          <input type="date" value={checkout} min={checkin || undefined} onChange={(e) => setCheckout(e.target.value)}
+            className="w-full text-xs border border-zinc-200 focus:border-rose-400 outline-none px-2 py-1.5 rounded-lg bg-white text-zinc-700" />
+        </div>
+      </div>
+      <div className="flex items-center justify-between">
+        <span className="text-[11px] font-medium text-zinc-500 flex items-center gap-1"><Users className="w-3.5 h-3.5" /> Guests</span>
+        <div className="flex items-center gap-2">
+          <button onClick={() => setGuests((g) => Math.max(1, g - 1))} className="w-6 h-6 rounded-full border border-zinc-200 text-zinc-600 hover:bg-zinc-100 flex items-center justify-center text-sm leading-none">−</button>
+          <span className="text-sm font-semibold text-zinc-700 w-4 text-center">{guests}</span>
+          <button onClick={() => setGuests((g) => Math.min(16, g + 1))} className="w-6 h-6 rounded-full border border-zinc-200 text-zinc-600 hover:bg-zinc-100 flex items-center justify-center text-sm leading-none">+</button>
+        </div>
+      </div>
+      <div className="grid grid-cols-3 gap-1.5">
+        {STAY_PROVIDERS.map((p) => (
+          <button key={p.id} onClick={() => open(p)} disabled={!loc}
+            className={`${p.color} disabled:opacity-40 disabled:cursor-not-allowed text-white text-[11px] font-semibold py-2 rounded-xl transition-colors flex items-center justify-center gap-1`}>
+            {p.label} <ExternalLink className="w-3 h-3" />
+          </button>
+        ))}
+      </div>
+      <p className="text-[10px] text-zinc-400 text-center leading-tight">Opens live listings on the provider's site in a new tab.</p>
+    </div>
+  );
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -879,6 +973,15 @@ export default function ExploreTab({ trip, isMember, onAddToItinerary, onShareTo
 
             {/* Results */}
             <div className="flex-1 overflow-y-auto px-3 py-3">
+              {/* Stays: deep-link to Airbnb / Booking / Google Hotels for this place */}
+              {activeCategory === "stays" && (
+                <StayFinder
+                  location={cityLabel || cityInput}
+                  tripStart={trip.startDate}
+                  tripEnd={trip.endDate}
+                />
+              )}
+
               {/* Loading skeletons */}
               {loading && (
                 <div className="space-y-3">
