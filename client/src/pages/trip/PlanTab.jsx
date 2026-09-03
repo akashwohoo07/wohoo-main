@@ -388,6 +388,12 @@ async function searchFlight(flightNum, date) {
     );
     if (!data?.success || !data.flight) return { error: data?.error || "not_found" };
     const f = data.flight;
+    // Duration from scheduled dep/arr times (minutes → "2h 15m").
+    let duration = "";
+    if (f.depTime && f.arrTime) {
+      const mins = Math.round((Date.parse(f.arrTime) - Date.parse(f.depTime)) / 60000);
+      if (mins > 0 && mins < 24 * 60 * 2) duration = `${Math.floor(mins / 60)}h ${mins % 60}m`;
+    }
     return {
       airline: f.airline || "",
       flightNum: f.flightNum || clean,
@@ -395,14 +401,18 @@ async function searchFlight(flightNum, date) {
       depIATA: f.depIATA || "",
       depCity: "",
       depTime: f.depTime || "",
+      depTerminal: f.depTerminal || "",
+      depGate: f.depGate || "",
       depLat: null, depLng: null,
       arrAirport: f.arrAirport || "",
       arrIATA: f.arrIATA || "",
       arrCity: "",
       arrTime: f.arrTime || "",
+      arrTerminal: f.arrTerminal || "",
       arrLat: null, arrLng: null,
       status: f.status || "",
-      duration: null,
+      aircraft: f.aircraft || "",
+      duration,
     };
   } catch (err) {
     return { error: err.response?.data?.error || "network_error" };
@@ -536,7 +546,13 @@ function FlightSearchPanel({ onSave, initialFlightNum = "", initialDate = "" }) 
       endDate,
       endTime: arrTime,
       notes: [
-        result.airline ? `Flight: ${result.airline} — ${result.flightNum}` : "",
+        result.airline ? `Flight: ${result.airline} — ${result.flightNum}` : `Flight: ${result.flightNum}`,
+        result.duration ? `Duration: ${result.duration}` : "",
+        result.depTerminal || result.depGate
+          ? `Departure: ${[result.depTerminal && `Terminal ${result.depTerminal}`, result.depGate && `Gate ${result.depGate}`].filter(Boolean).join(", ")}`
+          : "",
+        result.arrTerminal ? `Arrival: Terminal ${result.arrTerminal}` : "",
+        result.aircraft ? `Aircraft: ${result.aircraft}` : "",
         result.status ? `Status: ${result.status}` : "",
       ].filter(Boolean).join("\n"),
     });
@@ -604,25 +620,45 @@ function FlightSearchPanel({ onSave, initialFlightNum = "", initialDate = "" }) 
             )}
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-start gap-2">
             <div className="flex-1 text-center">
               <p className="text-lg font-bold text-zinc-900">{result.depIATA || "—"}</p>
               <p className="text-[10px] text-zinc-500 truncate">{result.depAirport}</p>
               {result.depTime && <p className="text-[11px] font-semibold text-zinc-700 mt-0.5">{new Date(result.depTime).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}</p>}
+              {(result.depTerminal || result.depGate) && (
+                <p className="text-[9px] text-zinc-400 mt-0.5">
+                  {[result.depTerminal && `T${result.depTerminal}`, result.depGate && `Gate ${result.depGate}`].filter(Boolean).join(" · ")}
+                </p>
+              )}
             </div>
-            <div className="flex-shrink-0 text-center">
+            <div className="flex-shrink-0 text-center pt-1.5">
               <div className="flex items-center gap-1">
                 <div className="w-6 h-px bg-zinc-300" />
                 <Plane className="w-3 h-3 text-zinc-400" />
                 <div className="w-6 h-px bg-zinc-300" />
               </div>
+              {result.duration && <p className="text-[9px] font-semibold text-sky-600 mt-0.5">{result.duration}</p>}
             </div>
             <div className="flex-1 text-center">
               <p className="text-lg font-bold text-zinc-900">{result.arrIATA || "—"}</p>
               <p className="text-[10px] text-zinc-500 truncate">{result.arrAirport}</p>
               {result.arrTime && <p className="text-[11px] font-semibold text-zinc-700 mt-0.5">{new Date(result.arrTime).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}</p>}
+              {result.arrTerminal && (
+                <p className="text-[9px] text-zinc-400 mt-0.5">T{result.arrTerminal}</p>
+              )}
             </div>
           </div>
+
+          {(result.aircraft || result.duration) && (
+            <div className="flex flex-wrap items-center justify-center gap-1.5 pt-0.5">
+              {result.duration && (
+                <span className="text-[10px] text-zinc-500 bg-zinc-50 border border-zinc-100 rounded-full px-2 py-0.5">Duration {result.duration}</span>
+              )}
+              {result.aircraft && (
+                <span className="text-[10px] text-zinc-500 bg-zinc-50 border border-zinc-100 rounded-full px-2 py-0.5">Aircraft {result.aircraft}</span>
+              )}
+            </div>
+          )}
 
           <button
             onClick={handleUse}
