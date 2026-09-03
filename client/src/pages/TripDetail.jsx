@@ -81,6 +81,57 @@ function greatCircleArc(lat1, lng1, lat2, lng2, steps = 80) {
   return coords;
 }
 
+// ── Bowed flight arc (quadratic Bézier) ──────────────────────
+// Offsets the midpoint perpendicular to the route by a signed `bow`, so two
+// flights on the same corridor (e.g. A→B and B→A) don't overlap — one bows up,
+// the other down; extra flights on the same leg fan out with larger bows.
+function bowedArc(lat1, lng1, lat2, lng2, bow = 0.2, steps = 64) {
+  const mx = (lng1 + lng2) / 2, my = (lat1 + lat2) / 2;
+  const dx = lng2 - lng1, dy = lat2 - lat1;
+  const dist = Math.hypot(dx, dy) || 1e-6;
+  const px = -dy / dist, py = dx / dist; // unit vector perpendicular to the route
+  const cx = mx + px * bow * dist;       // Bézier control point
+  const cy = my + py * bow * dist;
+  const pts = [];
+  for (let i = 0; i <= steps; i++) {
+    const t = i / steps, a = (1 - t) ** 2, b = 2 * (1 - t) * t, c = t ** 2;
+    pts.push([a * lng1 + b * cx + c * lng2, a * lat1 + b * cy + c * lat2]);
+  }
+  return pts;
+}
+
+// Assign each flight leg a bow so overlapping corridors separate: sign by travel
+// direction (outbound vs return), magnitude grows for repeats on the same corridor.
+function computeFlightBows(tLegs) {
+  const bows = new Array(tLegs.length).fill(0);
+  const seen = {};
+  const r = (n) => Math.round(n * 100) / 100;
+  tLegs.forEach((leg, i) => {
+    if (leg.transportMode !== "flight" || leg.fromLat == null || leg.toLat == null) return;
+    const A = `${r(leg.fromLat)},${r(leg.fromLng)}`;
+    const B = `${r(leg.toLat)},${r(leg.toLng)}`;
+    const corridor = [A, B].sort().join("|");
+    const sign = leg.fromLng < leg.toLng || (leg.fromLng === leg.toLng && leg.fromLat < leg.toLat) ? 1 : -1;
+    const k = `${corridor}|${sign}`;
+    const occ = seen[k] || 0;
+    seen[k] = occ + 1;
+    bows[i] = sign * (0.18 + 0.13 * occ);
+  });
+  return bows;
+}
+
+// A colour-badged plane icon for the arc midpoint, rotated to travel direction.
+// Mapbox positions the ROOT element (translate), so we rotate an INNER element.
+function createMidPlaneEl(color, rotationDeg) {
+  const root = document.createElement("div");
+  root.style.cssText = "width:26px;height:26px;pointer-events:none;";
+  const inner = document.createElement("div");
+  inner.style.cssText = `width:26px;height:26px;display:flex;align-items:center;justify-content:center;transform:rotate(${rotationDeg}deg);`;
+  inner.innerHTML = `<div style="width:24px;height:24px;border-radius:50%;background:${color};border:2px solid #fff;box-shadow:0 1px 5px rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center;">${iconSvg(Plane, { size: 13, color: "white" })}</div>`;
+  root.appendChild(inner);
+  return root;
+}
+
 // ── MAP ───────────────────────────────────────────────────────
 function TripMap({ destination, markers = [], transportLegs = [] }) {
   const mapRef = useRef(null);
@@ -266,6 +317,8 @@ function TripMap({ destination, markers = [], transportLegs = [] }) {
     const mapboxgl = window._mapboxgl;
     if (!mapboxgl) return;
 
+    const bows = computeFlightBows(tLegs);
+
     tLegs.forEach((leg, i) => {
       if (!leg.fromLat || !leg.fromLng || !leg.toLat || !leg.toLng) return;
 
@@ -273,9 +326,9 @@ function TripMap({ destination, markers = [], transportLegs = [] }) {
       const isTrain = leg.transportMode === "train";
       const color = leg.color || LEG_COLORS[i % LEG_COLORS.length];
 
-      // Arc coordinates: great circle for flights, straight line for trains/others
+      // Flights: bowed arc (separates overlapping corridors). Others: straight line.
       const coords = isFlight
-        ? greatCircleArc(leg.fromLat, leg.fromLng, leg.toLat, leg.toLng, 80)
+        ? bowedArc(leg.fromLat, leg.fromLng, leg.toLat, leg.toLng, bows[i], 64)
         : [[leg.fromLng, leg.fromLat], [leg.toLng, leg.toLat]];
 
       map.addSource(`transport-arc-src-${i}`, {
@@ -327,6 +380,18 @@ function TripMap({ destination, markers = [], transportLegs = [] }) {
       map.on("mouseleave", `transport-arc-${i}`, () => {
         map.getCanvas().style.cursor = "";
       });
+
+      // Plane icon at the arc midpoint, rotated to the on-screen travel direction.
+      if (isFlight && coords.length > 4) {
+        const mi = Math.floor(coords.length / 2);
+        const p1 = map.project(coords[mi - 1]);
+        const p2 = map.project(coords[mi + 1]);
+        const angle = (Math.atan2(p2.y - p1.y, p2.x - p1.x) * 180) / Math.PI;
+        const planeMarker = new mapboxgl.Marker({ element: createMidPlaneEl(color, angle + 45), anchor: "center" })
+          .setLngLat(coords[mi])
+          .addTo(map);
+        transportMarkersRef.current.push(planeMarker);
+      }
 
       // Endpoint markers (airport / station icons)
       const fromIcon = iconSvg(isFlight ? PlaneTakeoff : isTrain ? TrainFront : MapPin, { size: 15, color: "white" });
