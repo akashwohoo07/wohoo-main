@@ -35,6 +35,22 @@ export const AuthProvider = ({ children }) => {
     return () => { cancelled = true; };
   }, []); // ← runs ONCE only
 
+  // Activity heartbeat: while logged in and the tab is visible, report time so
+  // the admin dashboard can measure engagement. Cheap (one small POST/interval,
+  // paused when the tab is hidden). The interval value == the time credited.
+  useEffect(() => {
+    if (!user) return;
+    const INTERVAL = 60; // seconds
+    const ping = () => {
+      if (document.visibilityState === "visible") {
+        api.post("/analytics/ping", { seconds: INTERVAL }).catch(() => {});
+      }
+    };
+    ping(); // credit the first minute immediately
+    const t = setInterval(ping, INTERVAL * 1000);
+    return () => clearInterval(t);
+  }, [user]);
+
   const logout = async () => {
     try {
       await api.post("/auth/logout");

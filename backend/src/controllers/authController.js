@@ -2,6 +2,7 @@ import jwt from "jsonwebtoken";
 import { OAuth2Client } from "google-auth-library";
 import User from "../models/User.js";
 import { hashToken } from "../utils/tokens.js";
+import { isAdminEmail } from "../middleware/admin.js";
 
 // Verifies Google ID tokens coming from the mobile app's native Google Sign-In.
 const googleClient = new OAuth2Client();
@@ -167,5 +168,9 @@ export const logout = async (req, res, next) => {
 };
 
 export const getMe = async (req, res) => {
-  res.json({ success: true, user: req.user });
+  // Surface isAdmin so the client can show/route the admin dashboard. The real
+  // gate is server-side (requireAdmin on /api/admin/*).
+  const user = req.user.toObject ? req.user.toObject() : { ...req.user };
+  user.isAdmin = isAdminEmail(req.user.email);
+  res.json({ success: true, user });
 };

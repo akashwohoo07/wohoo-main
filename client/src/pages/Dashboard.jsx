@@ -1,11 +1,11 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plane, Compass, Heart, Users, MoreVertical, LogOut, User as UserIcon, Search as SearchIcon, Settings as SettingsIcon } from "lucide-react";
+import { Plane, Compass, Heart, Users, MoreVertical, LogOut, User as UserIcon, Search as SearchIcon, Settings as SettingsIcon, BarChart3 } from "lucide-react";
 import api from "../api/axios";
 import { useAuth } from "../context/AuthContext";
 import NotificationBell from "../components/NotificationBell";
 
-function NavMenu({ user, onProfile, onSettings, onLogout, onCommunities }) {
+function NavMenu({ user, onProfile, onSettings, onLogout, onCommunities, onAdmin }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
   useEffect(() => {
@@ -50,6 +50,15 @@ function NavMenu({ user, onProfile, onSettings, onLogout, onCommunities }) {
             <SettingsIcon className="w-4 h-4 text-zinc-400" />
             Settings
           </button>
+          {user?.isAdmin && (
+            <button
+              onClick={() => { setOpen(false); onAdmin(); }}
+              className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-zinc-600 hover:bg-zinc-50 transition-colors"
+            >
+              <BarChart3 className="w-4 h-4 text-zinc-400" />
+              Admin analytics
+            </button>
+          )}
           <div className="h-px bg-zinc-100 my-1" />
           <button
             onClick={() => { setOpen(false); onLogout(); }}
@@ -345,6 +354,7 @@ export default function Dashboard() {
             onProfile={() => navigate(`/u/${user.username}`)}
             onSettings={() => navigate("/settings")}
             onCommunities={() => navigate("/communities")}
+            onAdmin={() => navigate("/admin")}
             onLogout={async () => { await logout(); navigate("/login"); }}
           />
         </div>

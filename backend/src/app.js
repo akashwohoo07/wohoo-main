@@ -25,6 +25,8 @@ import notificationRoutes from "./routes/notificationRoutes.js";
 import communityRoutes from "./routes/communityRoutes.js";
 import tripChatRoutes from "./routes/tripChatRoutes.js";
 import tripNotesRoutes from "./routes/tripNotesRoutes.js";
+import analyticsRoutes from "./routes/analyticsRoutes.js";
+import adminRoutes from "./routes/adminRoutes.js";
 
 initializePassport();
 
@@ -91,6 +93,8 @@ app.use("/api/trips/:tripId/chat", tripChatRoutes);
 app.use("/api/trips/:tripId", tripNotesRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/communities", communityRoutes);
+app.use("/api/analytics", analyticsRoutes);
+app.use("/api/admin", adminRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/follow", followRoutes);
 app.use("/api/explore", exploreRoutes);
