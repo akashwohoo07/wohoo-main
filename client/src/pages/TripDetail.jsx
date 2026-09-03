@@ -1163,8 +1163,8 @@ export default function TripDetail() {
               className={`flex items-center gap-1.5 bg-zinc-100 text-zinc-500 text-xs px-3 py-1.5 rounded-lg flex-shrink-0 transition-colors ${canEdit ? "hover:bg-zinc-200 cursor-pointer" : "cursor-default"}`}
             >
               <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-              {formatDate(trip.startDate)} - {formatDate(trip.endDate)}
-              {canEdit && <svg className="w-3 h-3 text-zinc-400 ml-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>}
+              <span className="hidden sm:inline">{formatDate(trip.startDate)} - {formatDate(trip.endDate)}</span>
+              {canEdit && <svg className="w-3 h-3 text-zinc-400 ml-0.5 hidden sm:block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>}
             </button>
           ) : canEdit ? (
             <button onClick={() => setShowDateModal(true)}
@@ -1175,7 +1175,7 @@ export default function TripDetail() {
           ) : null}
         </div>
 
-        <div className="flex items-center gap-3 flex-shrink-0">
+        <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
           <span className="text-xs text-zinc-400 hidden sm:flex items-center gap-1">
             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
             Saved
@@ -1188,9 +1188,9 @@ export default function TripDetail() {
             ))}
           </div>
           {canEdit && (
-            <button onClick={() => setShowInvite(true)} className="flex items-center gap-1.5 bg-rose-500 hover:bg-rose-600 text-white text-xs font-medium px-4 py-2 rounded-full transition-all">
+            <button onClick={() => setShowInvite(true)} className="flex items-center gap-1.5 bg-rose-500 hover:bg-rose-600 text-white text-xs font-medium px-3 sm:px-4 py-2 rounded-full transition-all">
               <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" /></svg>
-              Invite
+              <span className="hidden sm:inline">Invite</span>
             </button>
           )}
           {isMember && (
