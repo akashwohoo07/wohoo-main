@@ -143,6 +143,46 @@ function WorldTrafficMap({ countries, cities }) {
   return <div ref={ref} className="w-full h-72 rounded-2xl overflow-hidden border border-zinc-100" />;
 }
 
+// Weekly activity heatmap (7 days × 24 hours), visitor local time.
+const DOW = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+function ActivityHeatmap({ hourly }) {
+  const grid = {};
+  let max = 1;
+  (hourly || []).forEach((h) => { grid[`${h.dow}:${h.hour}`] = h.count; if (h.count > max) max = h.count; });
+  return (
+    <div className="bg-white border border-zinc-100 rounded-2xl p-4">
+      <div className="flex items-center gap-2 mb-3"><Clock className="w-4 h-4 text-zinc-400" /><h3 className="text-sm font-semibold text-zinc-700">Activity by time (visitor local time, 30d)</h3></div>
+      {(!hourly || hourly.length === 0) ? (
+        <p className="text-xs text-zinc-400 py-4 text-center">No data yet.</p>
+      ) : (
+        <div className="overflow-x-auto">
+          <div className="min-w-[560px]">
+            <div className="flex">
+              <div className="w-8" />
+              {Array.from({ length: 24 }, (_, h) => (
+                <div key={h} className="flex-1 text-center text-[9px] text-zinc-300">{h % 6 === 0 ? h : ""}</div>
+              ))}
+            </div>
+            {DOW.map((label, d) => (
+              <div key={d} className="flex items-center">
+                <div className="w-8 text-[10px] text-zinc-400">{label}</div>
+                {Array.from({ length: 24 }, (_, h) => {
+                  const c = grid[`${d}:${h}`] || 0;
+                  const intensity = c === 0 ? 0 : 0.15 + 0.85 * (c / max);
+                  return (
+                    <div key={h} className="flex-1 aspect-square m-[1px] rounded-sm" title={`${label} ${h}:00 — ${c} views`}
+                      style={{ backgroundColor: c === 0 ? "#f4f4f5" : `rgba(244,63,94,${intensity})` }} />
+                  );
+                })}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // Ranked list with proportional bars (top pages / sources / devices).
 function TrafficList({ icon: Icon, title, items }) {
   const max = Math.max(1, ...(items || []).map((i) => i.count));
@@ -315,6 +355,16 @@ export default function AdminDashboard() {
               ) : (
                 <p className="text-xs text-zinc-400 py-4 text-center">No location data yet (populates in prod via Cloudflare).</p>
               )}
+            </div>
+          </div>
+        )}
+
+        {/* Regions + time-of-day */}
+        {overview?.traffic && (
+          <div className="grid md:grid-cols-3 gap-3">
+            <TrafficList icon={Globe} title="Top regions / states (30d)" items={(overview.traffic.regions || []).map((r) => ({ key: r.label, count: r.count }))} />
+            <div className="md:col-span-2">
+              <ActivityHeatmap hourly={overview.traffic.hourly} />
             </div>
           </div>
         )}

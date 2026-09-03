@@ -28,11 +28,14 @@ function RouteTracker() {
     const w = window.innerWidth;
     const device = w < 640 ? "mobile" : w < 1024 ? "tablet" : "desktop";
     const utm = new URLSearchParams(window.location.search).get("utm_source") || undefined;
+    const now = new Date();
     api.post("/analytics/pageview", {
       path: location.pathname,
       referrer: document.referrer || undefined,
       device,
       utm,
+      hour: now.getHours(), // visitor's LOCAL time → activity heatmap
+      dow: now.getDay(),
     }).catch(() => {});
   }, [location.pathname]);
   return null;

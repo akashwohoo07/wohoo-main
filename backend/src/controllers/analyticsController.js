@@ -96,6 +96,26 @@ export const recordPageview = async (req, res, next) => {
         },
       });
     }
+
+    // Region/state (also from the CF managed transform).
+    const region = String(req.headers["cf-region"] || "").slice(0, 80);
+    if (validCountry && region) {
+      ops.push({
+        updateOne: {
+          filter: { day, kind: "region", key: `${country}:${region}` },
+          update: { $inc: { count: 1 }, $set: { label: `${region}, ${country}` } },
+          upsert: true,
+        },
+      });
+    }
+
+    // Visitor's LOCAL time-of-day (sent by the client) → weekly activity heatmap.
+    const hour = parseInt(req.body?.hour, 10);
+    const dow = parseInt(req.body?.dow, 10);
+    if (Number.isInteger(hour) && hour >= 0 && hour <= 23 && Number.isInteger(dow) && dow >= 0 && dow <= 6) {
+      ops.push(upsert("hour", `${dow}:${hour}`));
+    }
+
     await PageStat.bulkWrite(ops);
     res.json({ success: true });
   } catch (err) {
@@ -162,11 +182,23 @@ export const getOverview = async (req, res, next) => {
       ]),
     ]);
 
-    const cities = await PageStat.aggregate([
-      { $match: { kind: "city", day: { $gte: since30Day } } },
-      { $group: { _id: "$key", count: { $sum: "$count" }, lat: { $first: "$lat" }, lng: { $first: "$lng" }, label: { $first: "$label" } } },
-      { $sort: { count: -1 } },
-      { $limit: 200 },
+    const [cities, regions, hourly] = await Promise.all([
+      PageStat.aggregate([
+        { $match: { kind: "city", day: { $gte: since30Day } } },
+        { $group: { _id: "$key", count: { $sum: "$count" }, lat: { $first: "$lat" }, lng: { $first: "$lng" }, label: { $first: "$label" } } },
+        { $sort: { count: -1 } },
+        { $limit: 200 },
+      ]),
+      PageStat.aggregate([
+        { $match: { kind: "region", day: { $gte: since30Day } } },
+        { $group: { _id: "$key", count: { $sum: "$count" }, label: { $first: "$label" } } },
+        { $sort: { count: -1 } },
+        { $limit: 20 },
+      ]),
+      PageStat.aggregate([
+        { $match: { kind: "hour", day: { $gte: since30Day } } },
+        { $group: { _id: "$key", count: { $sum: "$count" } } },
+      ]),
     ]);
 
     res.json({
@@ -190,6 +222,11 @@ export const getOverview = async (req, res, next) => {
         devices: devices.map((r) => ({ key: r._id, count: r.count })),
         countries: countries.map((r) => ({ key: r._id, count: r.count })),
         cities: cities.map((r) => ({ label: r.label, lat: r.lat, lng: r.lng, count: r.count })),
+        regions: regions.map((r) => ({ label: r.label, count: r.count })),
+        hourly: hourly.map((h) => {
+          const [dow, hour] = h._id.split(":").map(Number);
+          return { dow, hour, count: h.count };
+        }),
       },
     });
   } catch (err) {

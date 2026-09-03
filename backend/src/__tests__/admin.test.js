@@ -133,6 +133,19 @@ describe("Analytics & Admin", () => {
       expect(mumbai.lng).toBeCloseTo(72.87, 1);
     });
 
+    it("captures region and local time-of-day for regions list + heatmap", async () => {
+      await request(app).post("/api/analytics/pageview")
+        .set("CF-IPCountry", "IN").set("CF-Region", "Maharashtra")
+        .send({ path: "/", device: "mobile", hour: 21, dow: 3 });
+
+      const admin = await createAuthUser({ username: uname() });
+      process.env.ADMIN_EMAILS = admin.user.email;
+      const res = await request(app).get("/api/admin/overview").set(auth(admin.token));
+      expect(res.body.traffic.regions.map((r) => r.label)).toContain("Maharashtra, IN");
+      const cell = res.body.traffic.hourly.find((h) => h.dow === 3 && h.hour === 21);
+      expect(cell.count).toBeGreaterThanOrEqual(1);
+    });
+
     it("404 for an unknown user detail", async () => {
       const admin = await createAuthUser({ username: uname() });
       process.env.ADMIN_EMAILS = admin.user.email;
