@@ -139,7 +139,9 @@ export default function NotificationBell() {
         <>
           {/* Mobile backdrop */}
           <div className="fixed inset-0 z-40 bg-black/20 sm:hidden" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 mt-2 z-50 w-[calc(100vw-2rem)] sm:w-96 max-w-96 bg-white rounded-2xl shadow-2xl border border-zinc-100 overflow-hidden">
+          {/* Mobile: fixed full-width sheet near the top (the bell isn't at the screen edge,
+              so an absolute dropdown would overflow off-screen). Desktop: anchored dropdown. */}
+          <div className="fixed left-3 right-3 top-16 z-50 sm:absolute sm:left-auto sm:right-0 sm:top-full sm:mt-2 sm:w-96 bg-white rounded-2xl shadow-2xl border border-zinc-100 overflow-hidden">
             <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-100">
               <h3 className="text-sm font-semibold text-zinc-900">Notifications</h3>
               {items.some((n) => !n.read) && (

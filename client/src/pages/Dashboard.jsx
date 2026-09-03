@@ -5,7 +5,7 @@ import api from "../api/axios";
 import { useAuth } from "../context/AuthContext";
 import NotificationBell from "../components/NotificationBell";
 
-function NavMenu({ user, onProfile, onSettings, onLogout }) {
+function NavMenu({ user, onProfile, onSettings, onLogout, onCommunities }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
   useEffect(() => {
@@ -25,6 +25,15 @@ function NavMenu({ user, onProfile, onSettings, onLogout }) {
       </button>
       {open && (
         <div className="absolute right-0 mt-2 z-50 w-48 bg-white rounded-xl shadow-2xl border border-zinc-100 py-1.5 overflow-hidden">
+          {/* Mobile only — the top nav tabs (incl. Community) are hidden on small screens */}
+          <button
+            onClick={() => { setOpen(false); onCommunities(); }}
+            className="md:hidden w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-zinc-600 hover:bg-zinc-50 transition-colors"
+          >
+            <Users className="w-4 h-4 text-zinc-400" />
+            Communities
+          </button>
+          <div className="md:hidden h-px bg-zinc-100 my-1" />
           {user?.username && (
             <button
               onClick={() => { setOpen(false); onProfile(); }}
@@ -335,6 +344,7 @@ export default function Dashboard() {
             user={user}
             onProfile={() => navigate(`/u/${user.username}`)}
             onSettings={() => navigate("/settings")}
+            onCommunities={() => navigate("/communities")}
             onLogout={async () => { await logout(); navigate("/login"); }}
           />
         </div>
