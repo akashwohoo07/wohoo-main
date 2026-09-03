@@ -169,7 +169,17 @@ function useNominatim(query, bias = null) {
 
 // ── Airport geocoding via Nominatim ─────────────────────────
 async function geocodeAirport(query) {
-  // Try IATA code first, then name
+  if (!query) return null;
+  // Prefer the bundled airports dataset — exact IATA/city match with coords, instant.
+  try {
+    const { data } = await api.get(`/transport/airports?q=${encodeURIComponent(query)}`);
+    const a = data.airports?.[0];
+    if (a && Number.isFinite(a.lat) && Number.isFinite(a.lng)) {
+      return { lat: a.lat, lng: a.lng, name: a.name, label: `${a.city || a.name} (${a.iata})` };
+    }
+  } catch { /* fall back to Nominatim below */ }
+
+  // Nominatim fallback: try IATA code first, then name
   const searches = [
     `${query} airport`,
     query,
@@ -500,8 +510,20 @@ function FlightSearchPanel({ onFill, initialFlightNum = "", initialDate = "" }) 
 
     const depTime = result.depTime ? new Date(result.depTime).toTimeString().slice(0, 5) : "";
     const arrTime = result.arrTime ? new Date(result.arrTime).toTimeString().slice(0, 5) : "";
-    const depDate = result.depTime ? new Date(result.depTime).toISOString().split("T")[0] : date;
-    const arrDate = result.arrTime ? new Date(result.arrTime).toISOString().split("T")[0] : date;
+    // Keep the user's chosen travel date (the free AviationStack plan returns
+    // real-time = today's flight); only borrow the flight's TIMES. Carry over the
+    // day offset if the flight arrives the next day (overnight).
+    const dstr = (iso) => new Date(iso).toISOString().split("T")[0];
+    const dayOffset = result.depTime && result.arrTime
+      ? Math.round((Date.parse(dstr(result.arrTime)) - Date.parse(dstr(result.depTime))) / 86400000)
+      : 0;
+    const startDate = date || (result.depTime ? dstr(result.depTime) : "");
+    let endDate = startDate;
+    if (startDate && dayOffset) {
+      const d = new Date(startDate + "T00:00:00Z");
+      d.setUTCDate(d.getUTCDate() + dayOffset);
+      endDate = d.toISOString().split("T")[0];
+    }
 
     onFill({
       title: `${result.flightNum}${result.airline ? " · " + result.airline : ""}`,
@@ -511,9 +533,9 @@ function FlightSearchPanel({ onFill, initialFlightNum = "", initialDate = "" }) 
       fromLng: dep?.lng || null,
       toLat: arr?.lat || null,
       toLng: arr?.lng || null,
-      date: depDate,
+      date: startDate,
       time: depTime,
-      endDate: arrDate,
+      endDate,
       endTime: arrTime,
       notes: [
         result.airline ? `Flight: ${result.airline} — ${result.flightNum}` : "",

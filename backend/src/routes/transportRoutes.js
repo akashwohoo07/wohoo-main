@@ -27,10 +27,21 @@ router.get("/flight", async (req, res) => {
   // Normalise: "6E-984" → "6E984", "AI 101" → "AI101"
   const clean = flightNum.replace(/[\s-]/g, "").toUpperCase();
 
+  const fetchFlight = async (withDate) => {
+    const params = new URLSearchParams({ access_key: key, flight_iata: clean, limit: "1" });
+    if (withDate) params.set("flight_date", date);
+    const r = await fetch(`http://api.aviationstack.com/v1/flights?${params.toString()}`);
+    return r.json();
+  };
+
   try {
-    const url = `http://api.aviationstack.com/v1/flights?access_key=${key}&flight_iata=${clean}&flight_date=${date}&limit=1`;
-    const response = await fetch(url);
-    const data = await response.json();
+    // Try the date-specific lookup (paid plans). The free plan rejects flight_date
+    // with "function_access_restricted" → fall back to a real-time lookup (route +
+    // schedule for that flight number). The caller's chosen date is kept for the trip.
+    let data = await fetchFlight(true);
+    if (data?.error?.code === "function_access_restricted") {
+      data = await fetchFlight(false);
+    }
 
     if (data.error) {
       return res.status(422).json({ success: false, error: "api_error", message: data.error.message || "AviationStack error" });
