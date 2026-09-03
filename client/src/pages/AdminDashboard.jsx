@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  ArrowLeft, Users, UserPlus, Activity, Clock, Plane, MessagesSquare, Search, Loader2, X, TrendingUp,
+  ArrowLeft, Users, UserPlus, Activity, Clock, Plane, MessagesSquare, Search, Loader2, X, TrendingUp, Eye, Globe,
 } from "lucide-react";
 import api from "../api/axios";
 
@@ -38,6 +38,31 @@ function BarChart({ data, valueKey, label, color = "bg-rose-400" }) {
       )}
       {data.length > 0 && (
         <div className="flex justify-between text-[10px] text-zinc-300 mt-1"><span>{data[0].day.slice(5)}</span><span>{data[data.length - 1].day.slice(5)}</span></div>
+      )}
+    </div>
+  );
+}
+
+// Ranked list with proportional bars (top pages / sources / devices).
+function TrafficList({ icon: Icon, title, items }) {
+  const max = Math.max(1, ...(items || []).map((i) => i.count));
+  return (
+    <div className="bg-white border border-zinc-100 rounded-2xl p-4">
+      <div className="flex items-center gap-2 mb-3"><Icon className="w-4 h-4 text-zinc-400" /><h3 className="text-sm font-semibold text-zinc-700">{title}</h3></div>
+      {!items || items.length === 0 ? (
+        <p className="text-xs text-zinc-400 py-4 text-center">No data yet.</p>
+      ) : (
+        <div className="space-y-1.5">
+          {items.map((i) => (
+            <div key={i.key} className="relative">
+              <div className="absolute inset-y-0 left-0 bg-rose-50 rounded" style={{ width: `${(i.count / max) * 100}%` }} />
+              <div className="relative flex justify-between px-2 py-1 text-xs">
+                <span className="text-zinc-600 truncate mr-2">{i.key}</span>
+                <span className="text-zinc-400 tabular-nums flex-shrink-0">{i.count}</span>
+              </div>
+            </div>
+          ))}
+        </div>
       )}
     </div>
   );
@@ -138,7 +163,7 @@ export default function AdminDashboard() {
           <StatCard icon={Activity} label="Active today" value={t ? t.activeToday : "—"} sub={t ? `~${t.avgMinutesTodayPerActive}m avg` : ""} />
           <StatCard icon={Plane} label="Trips" value={t ? t.trips : "—"} />
           <StatCard icon={MessagesSquare} label="Messages" value={t ? t.messages : "—"} />
-          <StatCard icon={Users} label="Communities" value={t ? t.communities : "—"} />
+          <StatCard icon={Eye} label="Pageviews today" value={overview ? overview.traffic.pageviewsToday : "—"} />
         </div>
 
         {/* Charts */}
@@ -146,6 +171,15 @@ export default function AdminDashboard() {
           <BarChart data={overview?.signupsPerDay || []} valueKey="count" label="Signups / day (30d)" color="bg-rose-400" />
           <BarChart data={overview?.activityPerDay || []} valueKey="minutes" label="Active minutes / day (30d)" color="bg-emerald-400" />
         </div>
+
+        {/* Traffic (first-party) */}
+        {overview?.traffic && (
+          <div className="grid md:grid-cols-3 gap-3">
+            <TrafficList icon={Eye} title="Top pages (7d)" items={overview.traffic.topPaths} />
+            <TrafficList icon={Globe} title="Traffic sources (7d)" items={overview.traffic.topSources} />
+            <TrafficList icon={Activity} title="Devices (7d)" items={overview.traffic.devices} />
+          </div>
+        )}
 
         {/* Users table */}
         <div className="bg-white border border-zinc-100 rounded-2xl overflow-hidden">

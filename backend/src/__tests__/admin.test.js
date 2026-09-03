@@ -92,6 +92,20 @@ describe("Analytics & Admin", () => {
       expect(Array.isArray(detail.body.activityPerDay)).toBe(true);
     });
 
+    it("tracks pageviews (anonymous ok), normalizes paths, and surfaces traffic in overview", async () => {
+      // Anonymous pageview beacon — no auth required.
+      await request(app).post("/api/analytics/pageview").send({ path: "/trips/507f1f77bcf86cd799439011", referrer: "https://www.google.com/search?q=x", device: "mobile" });
+      await request(app).post("/api/analytics/pageview").send({ path: "/", referrer: "", device: "desktop" });
+
+      const admin = await createAuthUser({ username: uname() });
+      process.env.ADMIN_EMAILS = admin.user.email;
+      const res = await request(app).get("/api/admin/overview").set(auth(admin.token));
+      expect(res.body.traffic.pageviewsToday).toBeGreaterThanOrEqual(2);
+      expect(res.body.traffic.topPaths.map((p) => p.key)).toContain("/trips/:id"); // id normalized out
+      expect(res.body.traffic.topSources.map((s) => s.key)).toEqual(expect.arrayContaining(["google.com", "direct"]));
+      expect(res.body.traffic.devices.map((d) => d.key)).toEqual(expect.arrayContaining(["mobile", "desktop"]));
+    });
+
     it("404 for an unknown user detail", async () => {
       const admin = await createAuthUser({ username: uname() });
       process.env.ADMIN_EMAILS = admin.user.email;

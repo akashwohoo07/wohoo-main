@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import DailyActivity from "../models/DailyActivity.js";
+import PageStat from "../models/PageStat.js";
 import User from "../models/User.js";
 import Trip from "../models/Trip.js";
 import Community from "../models/Community.js";
@@ -29,12 +30,71 @@ export const recordPing = async (req, res, next) => {
   }
 };
 
+// ── PAGEVIEW (anonymous or authed) ────────────────────────────
+const OWN_HOSTS = ["wohoo.in", "www.wohoo.in", "api.wohoo.in", "localhost", "127.0.0.1"];
+
+// Normalize a path so ids/usernames/tokens don't explode the key space (also
+// strips PII like usernames out of analytics).
+function normalizePath(p) {
+  if (!p || typeof p !== "string") return "/";
+  let path = p.split("?")[0].split("#")[0];
+  path = path
+    .replace(/\/trips\/[a-f0-9]{24}/i, "/trips/:id")
+    .replace(/\/communities\/[a-f0-9]{24}/i, "/communities/:id")
+    .replace(/\/u\/[^/]+/i, "/u/:username")
+    .replace(/\/invite\/[^/]+/i, "/invite/:token")
+    .replace(/\/[a-f0-9]{24}/gi, "/:id");
+  if (path.length > 1) path = path.replace(/\/+$/, "");
+  return path.slice(0, 120) || "/";
+}
+
+function sourceOf(referrer, utm) {
+  if (utm) return String(utm).toLowerCase().slice(0, 60);
+  if (!referrer) return "direct";
+  try {
+    const host = new URL(referrer).hostname.replace(/^www\./, "").toLowerCase();
+    if (OWN_HOSTS.includes(host) || host.endsWith(".workers.dev")) return "direct"; // internal nav
+    return host.slice(0, 60);
+  } catch {
+    return "direct";
+  }
+}
+
+export const recordPageview = async (req, res, next) => {
+  try {
+    const day = dayStr();
+    const path = normalizePath(req.body?.path);
+    const device = ["mobile", "tablet", "desktop"].includes(req.body?.device) ? req.body.device : "desktop";
+    const source = sourceOf(req.body?.referrer, req.body?.utm);
+    const upsert = (kind, key) => ({
+      updateOne: { filter: { day, kind, key }, update: { $inc: { count: 1 } }, upsert: true },
+    });
+    await PageStat.bulkWrite([
+      upsert("total", "all"),
+      upsert("path", path),
+      upsert("device", device),
+      upsert("source", source),
+    ]);
+    res.json({ success: true });
+  } catch (err) {
+    // Analytics must never break navigation; swallow (incl. upsert races).
+    res.json({ success: true });
+  }
+};
+
 // ── ADMIN: OVERVIEW ───────────────────────────────────────────
 export const getOverview = async (req, res, next) => {
   try {
     const today = dayStr();
     const since30 = daysAgo(30);
     const since30Day = dayStr(daysAgo(30));
+    const since7Day = dayStr(daysAgo(7));
+    const topN = (kind) => PageStat.aggregate([
+      { $match: { kind, day: { $gte: since7Day } } },
+      { $group: { _id: "$key", count: { $sum: "$count" } } },
+      { $sort: { count: -1 } },
+      { $limit: 8 },
+    ]);
 
     const [
       totalUsers, usersToday, users7d,
@@ -65,6 +125,14 @@ export const getOverview = async (req, res, next) => {
       ]),
     ]);
 
+    // Traffic (first-party): today's pageviews + top pages/sources/devices (7d).
+    const [pvToday, topPaths, topSources, devices] = await Promise.all([
+      PageStat.findOne({ day: today, kind: "total", key: "all" }).lean(),
+      topN("path"),
+      topN("source"),
+      topN("device"),
+    ]);
+
     res.json({
       success: true,
       totals: {
@@ -79,6 +147,12 @@ export const getOverview = async (req, res, next) => {
       },
       signupsPerDay: signupSeries.map((d) => ({ day: d._id, count: d.count })),
       activityPerDay: activeSeries.map((d) => ({ day: d._id, minutes: Math.round(d.seconds / 60), users: d.users })),
+      traffic: {
+        pageviewsToday: pvToday?.count || 0,
+        topPaths: topPaths.map((r) => ({ key: r._id, count: r.count })),
+        topSources: topSources.map((r) => ({ key: r._id, count: r.count })),
+        devices: devices.map((r) => ({ key: r._id, count: r.count })),
+      },
     });
   } catch (err) {
     next(err);

@@ -1,4 +1,6 @@
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
+import { useEffect } from "react";
+import api from "./api/axios";
 import { AuthProvider } from "./context/AuthContext";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Login from "./pages/Login";
@@ -19,10 +21,28 @@ import Communities from "./pages/Communities";
 import CommunityDetail from "./pages/CommunityDetail";
 import HomePage from "./pages/HomePage"; // ← added
 
+// First-party pageview beacon on every route change (SPA-aware). Anonymous-safe.
+function RouteTracker() {
+  const location = useLocation();
+  useEffect(() => {
+    const w = window.innerWidth;
+    const device = w < 640 ? "mobile" : w < 1024 ? "tablet" : "desktop";
+    const utm = new URLSearchParams(window.location.search).get("utm_source") || undefined;
+    api.post("/analytics/pageview", {
+      path: location.pathname,
+      referrer: document.referrer || undefined,
+      device,
+      utm,
+    }).catch(() => {});
+  }, [location.pathname]);
+  return null;
+}
+
 export default function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
+        <RouteTracker />
         <Routes>
           <Route path="/" element={<HomePage />} /> {/* ← changed */}
           <Route path="/login" element={<Login />} />
