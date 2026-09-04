@@ -287,6 +287,115 @@ export const inviteMember = async (req, res, next) => {
   }
 };
 
+// ── COLLABORATORS: list members + pending invites ─────────────
+// Any trip member can see who's on the trip and who's been invited.
+export const getCollaborators = async (req, res, next) => {
+  try {
+    const trip = await Trip.findById(req.params.id)
+      .populate("members.user", "name avatar email username")
+      .select("members owner");
+    if (!trip) return res.status(404).json({ success: false, message: "Trip not found" });
+
+    const me = trip.members.find((m) => m.user?._id?.toString() === req.user._id.toString());
+    if (!me) return res.status(403).json({ success: false, message: "Access denied" });
+
+    const invites = await Invitation.find({ trip: trip._id, status: "pending", expiresAt: { $gt: new Date() } })
+      .populate("invitedUser", "name avatar username")
+      .select("invitedEmail invitedUser role createdAt");
+
+    res.json({
+      success: true,
+      myRole: me.role,
+      members: trip.members.map((m) => ({
+        user: m.user,
+        role: m.role,
+        joinedAt: m.joinedAt,
+        isOwner: m.user?._id?.toString() === trip.owner.toString(),
+      })),
+      invites: invites.map((i) => ({
+        _id: i._id,
+        email: i.invitedEmail,
+        user: i.invitedUser,
+        role: i.role,
+        createdAt: i.createdAt,
+      })),
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// ── CHANGE A MEMBER'S ROLE (owner only) ───────────────────────
+export const updateMemberRole = async (req, res, next) => {
+  try {
+    const { role } = req.body;
+    if (!["editor", "viewer"].includes(role)) {
+      return res.status(400).json({ success: false, message: "Role must be editor or viewer" });
+    }
+    const trip = await Trip.findById(req.params.id);
+    if (!trip) return res.status(404).json({ success: false, message: "Trip not found" });
+    if (trip.owner.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ success: false, message: "Only the owner can change roles" });
+    }
+    if (req.params.userId === trip.owner.toString()) {
+      return res.status(400).json({ success: false, message: "The owner's role can't be changed" });
+    }
+    const target = trip.members.find((m) => m.user.toString() === req.params.userId);
+    if (!target) return res.status(404).json({ success: false, message: "Member not found" });
+    target.role = role;
+    await trip.save();
+    res.json({ success: true, message: "Role updated" });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// ── REMOVE A MEMBER (owner removes anyone; a member removes self = leave) ──
+export const removeMember = async (req, res, next) => {
+  try {
+    const trip = await Trip.findById(req.params.id);
+    if (!trip) return res.status(404).json({ success: false, message: "Trip not found" });
+
+    const isOwner = trip.owner.toString() === req.user._id.toString();
+    const isSelf = req.params.userId === req.user._id.toString();
+    if (!isOwner && !isSelf) {
+      return res.status(403).json({ success: false, message: "Only the owner can remove members" });
+    }
+    if (req.params.userId === trip.owner.toString()) {
+      return res.status(400).json({ success: false, message: "The owner can't be removed — delete the trip instead" });
+    }
+    const before = trip.members.length;
+    trip.members = trip.members.filter((m) => m.user.toString() !== req.params.userId);
+    if (trip.members.length === before) {
+      return res.status(404).json({ success: false, message: "Member not found" });
+    }
+    await trip.save();
+    res.json({ success: true, message: isSelf ? "You left the trip" : "Member removed" });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// ── CANCEL A PENDING INVITE (owner or the inviter) ────────────
+export const cancelInvitation = async (req, res, next) => {
+  try {
+    const trip = await Trip.findById(req.params.id).select("owner members");
+    if (!trip) return res.status(404).json({ success: false, message: "Trip not found" });
+    const invite = await Invitation.findOne({ _id: req.params.invId, trip: trip._id, status: "pending" });
+    if (!invite) return res.status(404).json({ success: false, message: "Invite not found" });
+
+    const isOwner = trip.owner.toString() === req.user._id.toString();
+    const isInviter = invite.invitedBy.toString() === req.user._id.toString();
+    if (!isOwner && !isInviter) {
+      return res.status(403).json({ success: false, message: "No permission to cancel this invite" });
+    }
+    await Invitation.deleteOne({ _id: invite._id });
+    res.json({ success: true, message: "Invite cancelled" });
+  } catch (err) {
+    next(err);
+  }
+};
+
 // ── GET MY INVITATIONS ────────────────────────────────────────
 export const getMyInvitations = async (req, res, next) => {
   try {

@@ -10,6 +10,10 @@ import {
   inviteMember,
   getMyInvitations,
   respondToInvitation,
+  getCollaborators,
+  updateMemberRole,
+  removeMember,
+  cancelInvitation,
 } from "../controllers/tripController.js";
 
 const router = express.Router();
@@ -42,5 +46,11 @@ router.put("/:id", updateTrip);
 router.put("/:id/itinerary", updateItinerary);
 router.patch("/:id/privacy", togglePrivacy);
 router.post("/:id/invite", inviteMember);
+
+// Collaborator management
+router.get("/:id/collaborators", getCollaborators);
+router.patch("/:id/members/:userId", updateMemberRole);
+router.delete("/:id/members/:userId", removeMember);
+router.delete("/:id/invitations/:invId", cancelInvitation);
 
 export default router;

@@ -420,4 +420,73 @@ describe("Trips API", () => {
       expect(res.status).toBe(403);
     });
   });
+
+  describe("collaborator management", () => {
+    const bearer = (t) => ({ Authorization: `Bearer ${t}` });
+
+    async function tripWith(owner, extra = []) {
+      return Trip.create({
+        name: "Trip",
+        destination: sampleDestination,
+        owner: owner._id,
+        members: [{ user: owner._id, role: "owner" }, ...extra],
+      });
+    }
+
+    it("lists members + pending invites for a member", async () => {
+      const owner = await createAuthUser();
+      const editor = await createAuthUser({ email: "ed@example.com" });
+      const trip = await tripWith(owner.user, [{ user: editor.user._id, role: "editor" }]);
+      const res = await request(app).get(`/api/trips/${trip._id}/collaborators`).set(bearer(owner.token));
+      expect(res.status).toBe(200);
+      expect(res.body.members).toHaveLength(2);
+      expect(res.body.members.find((m) => m.isOwner).user._id).toBe(owner.user._id.toString());
+      expect(res.body.myRole).toBe("owner");
+    });
+
+    it("owner changes a member's role; non-owner cannot", async () => {
+      const owner = await createAuthUser();
+      const viewer = await createAuthUser({ email: "v@example.com" });
+      const trip = await tripWith(owner.user, [{ user: viewer.user._id, role: "viewer" }]);
+
+      const ok = await request(app).patch(`/api/trips/${trip._id}/members/${viewer.user._id}`).set(bearer(owner.token)).send({ role: "editor" });
+      expect(ok.status).toBe(200);
+      expect((await Trip.findById(trip._id)).members.find((m) => m.user.toString() === viewer.user._id.toString()).role).toBe("editor");
+
+      const denied = await request(app).patch(`/api/trips/${trip._id}/members/${owner.user._id}`).set(bearer(viewer.token)).send({ role: "viewer" });
+      expect(denied.status).toBe(403);
+    });
+
+    it("owner removes a member; a member can remove themselves (leave); owner can't be removed", async () => {
+      const owner = await createAuthUser();
+      const m1 = await createAuthUser({ email: "m1@example.com" });
+      const m2 = await createAuthUser({ email: "m2@example.com" });
+      const trip = await tripWith(owner.user, [
+        { user: m1.user._id, role: "editor" },
+        { user: m2.user._id, role: "viewer" },
+      ]);
+
+      // owner removes m1
+      const rm = await request(app).delete(`/api/trips/${trip._id}/members/${m1.user._id}`).set(bearer(owner.token));
+      expect(rm.status).toBe(200);
+      // m2 leaves (removes self)
+      const leave = await request(app).delete(`/api/trips/${trip._id}/members/${m2.user._id}`).set(bearer(m2.token));
+      expect(leave.status).toBe(200);
+      expect((await Trip.findById(trip._id)).members).toHaveLength(1);
+      // owner can't be removed
+      const rmOwner = await request(app).delete(`/api/trips/${trip._id}/members/${owner.user._id}`).set(bearer(owner.token));
+      expect(rmOwner.status).toBe(400);
+    });
+
+    it("cancels a pending invite (owner)", async () => {
+      const owner = await createAuthUser();
+      const trip = await tripWith(owner.user);
+      const inv = await request(app).post(`/api/trips/${trip._id}/invite`).set(bearer(owner.token)).send({ email: "pending@example.com", role: "viewer" });
+      const invId = inv.body.invite._id;
+      const cancel = await request(app).delete(`/api/trips/${trip._id}/invitations/${invId}`).set(bearer(owner.token));
+      expect(cancel.status).toBe(200);
+      const list = await request(app).get(`/api/trips/${trip._id}/collaborators`).set(bearer(owner.token));
+      expect(list.body.invites).toHaveLength(0);
+    });
+  });
 });
