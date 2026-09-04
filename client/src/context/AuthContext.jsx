@@ -16,9 +16,10 @@ export const AuthProvider = ({ children }) => {
         if (!cancelled) setUser(res.data.user);
       } catch {
         // The 15-min access token has likely expired. Try one silent refresh
-        // with the long-lived (14-day) refresh token, then retry /me. This is
-        // what keeps a user logged in after closing and reopening the tab —
-        // they only truly log out if the refresh token is gone/expired/revoked.
+        // with the long-lived refresh token, then retry /me. Each refresh slides
+        // the session forward, so a user who returns even after a long time stays
+        // logged in — they only truly log out if the refresh token is
+        // gone/expired (≈1 year of no visits) or revoked (manual logout).
         try {
           await api.post("/auth/refresh");
           const res = await api.get("/auth/me");

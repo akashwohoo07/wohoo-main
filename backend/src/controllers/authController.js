@@ -12,12 +12,24 @@ const googleAudiences = (process.env.GOOGLE_MOBILE_AUDIENCES || process.env.GOOG
   .split(",").map((s) => s.trim()).filter(Boolean);
 
 // Access token is short-lived (limits the blast radius if one leaks); the
-// refresh token lives 14 days so users stay logged in across tab closes/reopens
-// until they log out manually. JWT expiry and cookie maxAge are kept in sync.
+// refresh token is long-lived so users stay logged in "forever" (like Instagram)
+// until they log out manually. Security best-practices that keep this safe:
+//  • The refresh session SLIDES: every /auth/refresh rotates the token AND resets
+//    its expiry + cookie maxAge to a fresh full window. The client silently
+//    refreshes on load, so any user who opens the app even once a year keeps an
+//    unbroken session — effectively infinite, yet still bounded (a stolen token
+//    can't live forever).
+//  • Rotation: each refresh issues a brand-new refresh token and invalidates the
+//    previous one (only the latest hash is stored), so a leaked/old token dies.
+//  • The token is stored only as a SHA-256 hash (DB leak ≠ usable tokens),
+//    delivered as an httpOnly + secure + sameSite cookie (XSS/CSRF-safe), and
+//    revoked server-side on logout.
+// Configurable via REFRESH_TOKEN_DAYS (default 365). Access TTL stays short.
 const ACCESS_TOKEN_TTL = "15m";
-const REFRESH_TOKEN_TTL = "14d";
-const ACCESS_COOKIE_MAX_AGE = 15 * 60 * 1000;              // 15 minutes
-const REFRESH_COOKIE_MAX_AGE = 14 * 24 * 60 * 60 * 1000;  // 14 days
+const REFRESH_TOKEN_DAYS = Number(process.env.REFRESH_TOKEN_DAYS) || 365;
+const REFRESH_TOKEN_TTL = `${REFRESH_TOKEN_DAYS}d`;
+const ACCESS_COOKIE_MAX_AGE = 15 * 60 * 1000;                          // 15 minutes
+const REFRESH_COOKIE_MAX_AGE = REFRESH_TOKEN_DAYS * 24 * 60 * 60 * 1000; // default 1 year
 
 const generateTokens = (userId) => {
   const accessToken = jwt.sign({ id: userId }, process.env.JWT_SECRET, { expiresIn: ACCESS_TOKEN_TTL });

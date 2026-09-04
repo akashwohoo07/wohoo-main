@@ -65,6 +65,35 @@ describe("Auth API", () => {
       expect(cookies.some((c) => c.startsWith("accessToken="))).toBe(true);
     });
 
+    it("slides a long-lived (≈1yr) refresh session and rotates the token", async () => {
+      const { user } = await createAuthUser();
+      const refreshToken = generateRefreshToken(user._id);
+      const oldHash = hashToken(refreshToken);
+      await User.findByIdAndUpdate(user._id, { refreshToken: oldHash });
+
+      const res = await request(app)
+        .post("/api/auth/refresh")
+        .set("Cookie", `refreshToken=${refreshToken}`);
+      expect(res.status).toBe(200);
+
+      const cookies = res.headers["set-cookie"];
+      const refreshCookie = cookies.find((c) => c.startsWith("refreshToken="));
+      expect(refreshCookie).toBeDefined();
+      // Sliding session: the refresh cookie carries a long Max-Age (> 300 days).
+      const maxAge = Number(/Max-Age=(\d+)/i.exec(refreshCookie)?.[1]);
+      expect(maxAge).toBeGreaterThan(300 * 24 * 60 * 60);
+      // httpOnly (not readable by JS) — XSS-safe.
+      expect(/HttpOnly/i.test(refreshCookie)).toBe(true);
+
+      // Rotation: the stored hash changed, so the OLD token no longer works.
+      const after = await User.findById(user._id).select("+refreshToken");
+      expect(after.refreshToken).not.toBe(oldHash);
+      const reuse = await request(app)
+        .post("/api/auth/refresh")
+        .set("Cookie", `refreshToken=${refreshToken}`);
+      expect(reuse.status).toBe(401);
+    });
+
     it("refreshes for a legacy account whose username predates schema rules", async () => {
       // Reproduces the bug where .save() re-validated the whole document and
       // rejected an existing sub-12-char username on an unrelated write.

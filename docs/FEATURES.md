@@ -6,6 +6,21 @@ Update this file whenever a feature is added, changed, or removed. Keep entries 
 
 ## Changelog
 
+### 2026-09-05 — Stay logged in "forever" (secure sliding sessions)
+- Users now stay logged in until they **manually log out** (Instagram-style), instead of being
+  dropped after 14 days. The refresh session lifetime went from **14 days → 365 days**
+  (`REFRESH_TOKEN_DAYS`, env-configurable), and it **slides**: every `/auth/refresh` rotates the
+  token and resets its expiry + cookie `maxAge` to a fresh full window. The client silently
+  refreshes on load, so anyone who opens the app even once a year keeps an unbroken session —
+  effectively infinite, but still bounded (a stolen token can't live forever).
+- Security best-practices kept intact: short 15-min access token, **refresh-token rotation**
+  (old token invalidated on every refresh — reuse → 401), token stored only as a **SHA-256 hash**,
+  delivered as an **httpOnly + secure + sameSite** cookie, and **revoked server-side on logout**.
+- Tests: `auth.test.js` (+1) — asserts the refresh cookie carries a >300-day `Max-Age`, is
+  HttpOnly, rotates the stored hash, and that reusing the old token 401s. Backend 291 green.
+- Note: still one active refresh token per user (logging in on a new device signs out the old one).
+  True simultaneous multi-device sessions would need a per-device session store — separate change.
+
 ### 2026-09-04 — Trains: station search now matches by CITY too (still offline/free)
 - Evaluated live geocoders for "type a city → its stations": **Mapbox carries ZERO Indian
   railway stations** (New Delhi / Howrah / CST all return 0 POIs) **and its ToS forbids retaining
