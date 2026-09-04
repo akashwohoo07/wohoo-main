@@ -389,6 +389,18 @@ export const cancelInvitation = async (req, res, next) => {
     if (!isOwner && !isInviter) {
       return res.status(403).json({ success: false, message: "No permission to cancel this invite" });
     }
+    // Resolve the invitee's in-app notification so it can't keep showing a stale
+    // Accept/Decline for an invite that no longer exists. Do this BEFORE deleting
+    // the invitation (we filter by its id). The read layer also derives
+    // "cancelled" live once the invite is gone, but resolving here clears the
+    // badge and keeps the persisted status honest.
+    const cancelledTrip = await Trip.findById(trip._id).select("name");
+    await resolveInvitationNotifications(
+      invite._id,
+      null,
+      "cancelled",
+      `The invite to "${cancelledTrip?.name || "the trip"}" was cancelled`
+    ).catch(() => {});
     await Invitation.deleteOne({ _id: invite._id });
     res.json({ success: true, message: "Invite cancelled" });
   } catch (err) {

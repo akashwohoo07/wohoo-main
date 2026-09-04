@@ -1,7 +1,29 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { Bell, Check, X, Loader2, CheckCheck, MapPin, Users } from "lucide-react";
+import { Bell, Check, X, Loader2, CheckCheck, MapPin, Users, CheckCircle2, Ban } from "lucide-react";
 import api from "../api/axios";
+
+// For a resolved actionable notification (invite/request that's no longer
+// pending), the chip that replaces the Accept/Reject buttons. Driven by the
+// server's derived `outcome`, so it's always in sync with the platform.
+function resolvedChip(n) {
+  if (n.actionable) return null;
+  if (n.type !== "trip_invite" && n.type !== "community_request") return null;
+  const isTrip = n.type === "trip_invite";
+  switch (n.outcome) {
+    case "accepted":
+      return { label: isTrip ? "Joined trip" : "Accepted", tone: "green" };
+    case "declined":
+    case "rejected":
+      return { label: "Declined", tone: "gray" };
+    case "cancelled":
+      return { label: isTrip ? "Invite cancelled" : "Request withdrawn", tone: "gray" };
+    case "expired":
+      return { label: "Invite expired", tone: "gray" };
+    default:
+      return null;
+  }
+}
 
 function timeAgo(date) {
   const s = Math.floor((Date.now() - new Date(date)) / 1000);
@@ -82,16 +104,26 @@ export default function NotificationBell() {
     try { await api.patch("/notifications/read-all"); } catch { /* ignore */ }
   };
 
+  // Flip an actionable notification to its resolved state in place — the buttons
+  // become a chip instead of the row vanishing (keeps a record + matches the
+  // rest of the platform). `outcome` mirrors the server's derived value.
+  const resolveLocally = (id, outcome) =>
+    setItems((prev) => prev.map((x) => (x._id === id ? { ...x, actionable: false, outcome, status: outcome, read: true } : x)));
+
   // Trip invite accept/decline.
   const respond = async (n, action) => {
     if (!n.token) return;
     setActingId(n._id);
     try {
       await api.post(`/trips/invitations/${n.token}/respond`, { action });
-      setItems((prev) => prev.filter((x) => x._id !== n._id));
+      resolveLocally(n._id, action === "accept" ? "accepted" : "declined");
       fetchCount();
       if (action === "accept" && n.trip?._id) { setOpen(false); navigate(`/trips/${n.trip._id}`); }
-    } catch { /* ignore */ } finally {
+    } catch {
+      // The invite was likely already handled/cancelled elsewhere — re-sync so
+      // the stale buttons disappear rather than lingering.
+      fetchList(); fetchCount();
+    } finally {
       setActingId(null);
     }
   };
@@ -102,9 +134,11 @@ export default function NotificationBell() {
     setActingId(n._id);
     try {
       await api.post(`/communities/${n.community._id}/requests/${n.request}/respond`, { action });
-      setItems((prev) => prev.filter((x) => x._id !== n._id));
+      resolveLocally(n._id, action === "accept" ? "accepted" : "rejected");
       fetchCount();
-    } catch { /* ignore */ } finally {
+    } catch {
+      fetchList(); fetchCount();
+    } finally {
       setActingId(null);
     }
   };
@@ -161,12 +195,13 @@ export default function NotificationBell() {
                 </div>
               ) : (
                 items.map((n) => {
-                  // Only show Accept/Reject while the request/invite is still
-                  // pending. Once handled anywhere, status flips and we fall
-                  // through to the resolved message + View link.
-                  const pending = n.status === "pending" || (!n.status && (n.type === "trip_invite" || n.type === "community_request"));
-                  const isInvite = n.type === "trip_invite" && pending;
-                  const isRequest = n.type === "community_request" && pending;
+                  // Show Accept/Reject only while the invite/request is LIVE and
+                  // still pending — the server derives `actionable` from the
+                  // linked invitation/request, so a resolved/cancelled/expired one
+                  // never shows stale buttons. Otherwise render a resolved chip.
+                  const isInvite = n.type === "trip_invite" && n.actionable;
+                  const isRequest = n.type === "community_request" && n.actionable;
+                  const chip = resolvedChip(n);
                   const busy = actingId === n._id;
                   const to = targetOf(n);
                   const viewLabel = n.community?._id ? "View community" : "View trip";
@@ -209,11 +244,18 @@ export default function NotificationBell() {
                               {to && <button onClick={() => openTarget(n)} className="text-xs text-zinc-400 hover:text-rose-500 ml-auto inline-flex items-center gap-1"><Users className="w-3.5 h-3.5" /> View</button>}
                             </div>
                           ) : (
-                            to && (
-                              <button onClick={() => openTarget(n)} className="text-xs text-rose-500 hover:text-rose-600 font-medium mt-1.5 inline-flex items-center gap-1">
-                                {n.community?._id ? <Users className="w-3.5 h-3.5" /> : <MapPin className="w-3.5 h-3.5" />} {viewLabel}
-                              </button>
-                            )
+                            <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                              {chip && (
+                                <span className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full ${chip.tone === "green" ? "bg-emerald-50 text-emerald-600" : "bg-zinc-100 text-zinc-500"}`}>
+                                  {chip.tone === "green" ? <CheckCircle2 className="w-3.5 h-3.5" /> : <Ban className="w-3.5 h-3.5" />} {chip.label}
+                                </span>
+                              )}
+                              {to && (
+                                <button onClick={() => openTarget(n)} className="text-xs text-rose-500 hover:text-rose-600 font-medium inline-flex items-center gap-1">
+                                  {n.community?._id ? <Users className="w-3.5 h-3.5" /> : <MapPin className="w-3.5 h-3.5" />} {viewLabel}
+                                </button>
+                              )}
+                            </div>
                           )}
                         </div>
                         {!n.read && !isInvite && !isRequest && (

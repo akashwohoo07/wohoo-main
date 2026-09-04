@@ -178,6 +178,24 @@ describe("Communities API", () => {
       expect(ownerNotif.message).toMatch(/now a member/i);
     });
 
+    it("the owner's request notification reads as actionable while pending, then resolved (outcome=accepted)", async () => {
+      const reqRes = await request(app).post(`/api/communities/${priv._id}/request`).set(auth(requester.token));
+      const reqId = reqRes.body.request._id;
+
+      let list = (await request(app).get("/api/notifications").set(auth(owner.token))).body.notifications;
+      let n = list.find((x) => x.type === "community_request");
+      expect(n.actionable).toBe(true);
+      expect(n.outcome).toBeNull();
+      expect(n.request).toBe(reqId); // still a bare id for the client's respond call
+
+      await request(app).post(`/api/communities/${priv._id}/requests/${reqId}/respond`).set(auth(owner.token)).send({ action: "accept" });
+
+      list = (await request(app).get("/api/notifications").set(auth(owner.token))).body.notifications;
+      n = list.find((x) => x.type === "community_request");
+      expect(n.actionable).toBe(false);
+      expect(n.outcome).toBe("accepted");
+    });
+
     it("rejecting a request does not add a member", async () => {
       const reqRes = await request(app).post(`/api/communities/${priv._id}/request`).set(auth(requester.token));
       const reqId = reqRes.body.request._id;

@@ -33,10 +33,16 @@ const notificationSchema = new mongoose.Schema(
     message: { type: String, required: true, maxlength: 300 },
     // Actionable notifications (trip_invite, community_request) carry a status so
     // the UI knows whether to still show Accept/Reject. Once handled anywhere
-    // (the bell OR the community/trip page) it flips to accepted/rejected and the
-    // buttons are replaced by the resolved message. Non-actionable ones leave it
-    // unset.
-    status: { type: String, enum: ["pending", "accepted", "rejected"], default: undefined },
+    // (the bell, the community/trip page, or a cancel/expiry elsewhere) it flips
+    // to a terminal state and the buttons are replaced by a resolved chip. This is
+    // the persisted truth; the read layer ALSO re-derives it live from the linked
+    // invitation/request so the bell is never stale (see listNotifications).
+    // Non-actionable notifications leave it unset.
+    status: {
+      type: String,
+      enum: ["pending", "accepted", "rejected", "declined", "cancelled", "expired"],
+      default: undefined,
+    },
     read: { type: Boolean, default: false },
   },
   { timestamps: true }

@@ -6,6 +6,32 @@ Update this file whenever a feature is added, changed, or removed. Keep entries 
 
 ## Changelog
 
+### 2026-09-04 — Notifications: always in sync with the platform (no stale Accept/Reject)
+- **Problem:** an actionable notification (trip invite / community join request) could keep
+  showing Accept/Reject after the underlying invite/request was already resolved elsewhere —
+  most visibly when an owner **cancelled a pending invite** (`cancelInvitation` deleted the
+  Invitation but never resolved the invitee's notification), so clicking Accept 404'd.
+- **Fix — read is authoritative (no write-on-read):** `listNotifications` now populates the
+  linked `Invitation`/`JoinRequest` (status only) and **derives the live action-state**
+  (`deriveActionState`) instead of trusting the stored `status`. Each actionable notification
+  is serialized with `actionable` (show buttons?) and `outcome`
+  (`accepted|declined|rejected|cancelled|expired|null`). If the invite/request was resolved or
+  deleted through *any* path, the read reflects it — the bell can never show stale buttons.
+- **Fix — mutations resolve eagerly (defense in depth):** `cancelInvitation` now resolves the
+  invitee's notification (`outcome=cancelled`, marked read so the badge clears) before deleting
+  the invite. `resolveInvitationNotifications` gained an optional recipient (null = all
+  recipients of that invitation). Notification `status` enum extended with
+  `declined/cancelled/expired` so persisted truth can represent every terminal state.
+- **Frontend:** the bell shows Accept/Reject only when `actionable`; otherwise a **resolved
+  chip** ("✓ Joined trip", "Accepted", "Declined", "Invite cancelled", "Invite expired") plus
+  the View link. Acting in the bell flips the row **in place** to its resolved chip instead of
+  removing it; if an action fails (already handled elsewhere) the list re-fetches to re-sync.
+- **Tests**: backend `notifications.test.js` (+5: actionable pending → resolved, cancel resolves
+  invitee, derives cancelled when invite deleted underneath, badge clears) and
+  `communities.test.js` (+1: owner request notification actionable→accepted via the read);
+  frontend `NotificationBell.test.jsx` (5: live buttons, Joined/cancelled chips, in-place flip,
+  error re-sync). Backend 279 green, client 31 green.
+
 ### 2026-09-04 — Discover + Wishlist UI (frontend)
 - New **`/discover`** page: searches public trips (debounced `q`), responsive card grid with
   owner attribution, member count, and dates. Each card has a **heart** to save/unsave to the

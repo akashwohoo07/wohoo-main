@@ -231,3 +231,61 @@ describe("Accepting / declining from a notification", () => {
     expect(declined).toBeTruthy();
   });
 });
+
+describe("Notification action-state stays in sync (actionable / outcome)", () => {
+  let owner, trip, invitee, invite;
+  beforeEach(async () => {
+    owner = await createAuthUser({ username: username() });
+    trip = await makeTrip(owner.user);
+    invitee = await createAuthUser({ username: username() });
+    await request(app)
+      .post(`/api/trips/${trip._id}/invite`)
+      .set(auth(owner.token))
+      .send({ username: invitee.user.username, role: "editor" });
+    invite = await Invitation.findOne({ trip: trip._id, invitedEmail: invitee.user.email });
+  });
+
+  const listFor = async (u) => (await request(app).get("/api/notifications").set(auth(u.token))).body.notifications;
+
+  it("a pending trip invite is actionable with no outcome", async () => {
+    const [n] = await listFor(invitee);
+    expect(n.type).toBe("trip_invite");
+    expect(n.actionable).toBe(true);
+    expect(n.outcome).toBeNull();
+    expect(n.status).toBe("pending");
+  });
+
+  it("after accepting, the invite notification is no longer actionable and outcome=accepted", async () => {
+    await request(app).post(`/api/trips/invitations/${invite.token}/respond`).set(auth(invitee.token)).send({ action: "accept" });
+    const [n] = await listFor(invitee);
+    expect(n.actionable).toBe(false);
+    expect(n.outcome).toBe("accepted");
+  });
+
+  it("cancelling a pending invite resolves the invitee's notification (outcome=cancelled, read, not actionable)", async () => {
+    const res = await request(app).delete(`/api/trips/${trip._id}/invitations/${invite._id}`).set(auth(owner.token));
+    expect(res.status).toBe(200);
+    const [n] = await listFor(invitee);
+    expect(n.actionable).toBe(false);
+    expect(n.outcome).toBe("cancelled");
+    expect(n.read).toBe(true);
+    // The invitee can no longer act on a cancelled invite.
+    expect((await request(app).post(`/api/trips/invitations/${invite.token}/respond`).set(auth(invitee.token)).send({ action: "accept" })).status).toBe(404);
+  });
+
+  it("DERIVES the true state even if the persisted status is stale (invite deleted underneath)", async () => {
+    // Simulate a mutation path that deleted the invite WITHOUT resolving the
+    // notification — the read layer must still report it as resolved/cancelled.
+    await Notification.updateOne({ invitation: invite._id }, { $set: { status: "pending", read: false } });
+    await Invitation.deleteOne({ _id: invite._id });
+    const [n] = await listFor(invitee);
+    expect(n.actionable).toBe(false);
+    expect(n.outcome).toBe("cancelled");
+  });
+
+  it("the unread badge clears after an invite is cancelled", async () => {
+    await request(app).delete(`/api/trips/${trip._id}/invitations/${invite._id}`).set(auth(owner.token));
+    const res = await request(app).get("/api/notifications/unread-count").set(auth(invitee.token));
+    expect(res.body.count).toBe(0);
+  });
+});
