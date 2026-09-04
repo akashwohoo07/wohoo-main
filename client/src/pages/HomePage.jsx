@@ -502,10 +502,10 @@ export default function WohooHome() {
           </div>
           <div style={{ height:1, background:"rgba(17,17,16,.07)", marginBottom:48 }} />
 
-          {/* Responsive auto-fill grid: tiles stay a comfortable size and reflow
-              at every width. Shorter 4/3 (landscape) cards so photos aren't huge. */}
-          <div style={{ display:"grid", gridTemplateColumns: isMob ? "repeat(2,1fr)" : "repeat(auto-fill,minmax(240px,1fr))", gap: isMob?10:16 }}>
-            {INDIA_DESTINATIONS.map((d,i)=><DestCard key={d.name} d={d} i={i} isMob={isMob} aspect={isMob ? "1/1" : "4/3"} />)}
+          {/* Symmetric 3×3 grid (9 places) on both mobile and desktop. Compact,
+              shorter tiles on mobile (Instagram-style) so photos aren't huge. */}
+          <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap: isMob?7:16 }}>
+            {INDIA_DESTINATIONS.map((d,i)=><DestCard key={d.name} d={d} i={i} isMob={isMob} compact={isMob} aspect={isMob ? "1/1" : "4/3"} />)}
           </div>
         </div>
       </section>
@@ -950,7 +950,7 @@ export default function WohooHome() {
 /* ══════════════════════════════════════════════════
    DESTINATION CARD
 ══════════════════════════════════════════════════ */
-function DestCard({ d, i, isMob, aspect }) {
+function DestCard({ d, i, isMob, aspect, compact }) {
   const ref = useRef(null);
   const [vis, setVis] = useState(false);
   const [hov, setHov] = useState(false);
@@ -972,15 +972,17 @@ function DestCard({ d, i, isMob, aspect }) {
       <img src={d.img} alt={d.name} style={{ width:"100%",height:"100%",objectFit:"cover",
         transform:hov?"scale(1.08)":"scale(1)", transition:"transform .85s cubic-bezier(.16,1,.3,1)" }} />
       <div style={{ position:"absolute",inset:0,background:"linear-gradient(to top,rgba(17,17,16,.8) 28%,rgba(17,17,16,.04) 65%)" }} />
-      <div style={{ position:"absolute",top:14,left:14 }}>
-        <span style={{ fontFamily:"'Jost'",fontSize:"9px",fontWeight:700,letterSpacing:".15em",textTransform:"uppercase",
-          padding:"4px 10px",borderRadius:100,background:d.color,color:"#111110" }}>{d.tag}</span>
+      <div style={{ position:"absolute",top: compact?9:14,left: compact?9:14 }}>
+        <span style={{ fontFamily:"'Jost'",fontSize: compact?"8px":"9px",fontWeight:700,letterSpacing:".15em",textTransform:"uppercase",
+          padding: compact?"3px 7px":"4px 10px",borderRadius:100,background:d.color,color:"#111110" }}>{d.tag}</span>
       </div>
-      <div style={{ position:"absolute",bottom:0,left:0,right:0,padding: isMob?"16px":"22px" }}>
-        <div style={{ fontFamily:"'Jost'",fontSize:"10px",letterSpacing:".1em",color:"rgba(250,250,248,.5)",marginBottom:4 }}>{d.country}</div>
-        <h3 style={{ fontFamily:"'Cormorant Garamond',serif",fontSize: isMob?"1.3rem":"1.7rem",fontWeight:700,letterSpacing:"-0.02em",color:"#FAFAF8",lineHeight:1.1 }}>{d.name}</h3>
-        <div style={{ marginTop:10,fontFamily:"'Jost'",fontSize:"11px",fontWeight:500,color:d.color,
-          opacity:hov?1:0,transform:hov?"translateY(0)":"translateY(6px)",transition:"all .35s" }}>Explore →</div>
+      <div style={{ position:"absolute",bottom:0,left:0,right:0,padding: compact?"11px":(isMob?"16px":"22px") }}>
+        <div style={{ fontFamily:"'Jost'",fontSize: compact?"8px":"10px",letterSpacing:".1em",color:"rgba(250,250,248,.55)",marginBottom: compact?2:4,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis" }}>{d.country}</div>
+        <h3 style={{ fontFamily:"'Cormorant Garamond',serif",fontSize: compact?"1.05rem":(isMob?"1.3rem":"1.7rem"),fontWeight:700,letterSpacing:"-0.02em",color:"#FAFAF8",lineHeight:1.05 }}>{d.name}</h3>
+        {!compact && (
+          <div style={{ marginTop:10,fontFamily:"'Jost'",fontSize:"11px",fontWeight:500,color:d.color,
+            opacity:hov?1:0,transform:hov?"translateY(0)":"translateY(6px)",transition:"all .35s" }}>Explore →</div>
+        )}
       </div>
     </div>
   );
