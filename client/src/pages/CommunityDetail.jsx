@@ -151,23 +151,19 @@ function SettingsModal({ community, isOwner, onClose, onSaved }) {
   const [name, setName] = useState(community.name || "");
   const [description, setDescription] = useState(community.description || "");
   const [type, setType] = useState(community.type || "public");
-  const [avatar, setAvatar] = useState(community.avatar || "");
-  const [cover, setCover] = useState(community.cover || "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
   const dirty =
     name.trim() !== (community.name || "") ||
     description !== (community.description || "") ||
-    (isOwner && type !== community.type) ||
-    avatar !== (community.avatar || "") ||
-    cover !== (community.cover || "");
+    (isOwner && type !== community.type);
 
   const save = async () => {
     if (!name.trim()) { setError("Name can't be empty"); return; }
     setSaving(true); setError("");
     try {
-      const body = { name: name.trim(), description, avatar, cover };
+      const body = { name: name.trim(), description };
       if (isOwner) body.type = type;
       const { data } = await api.patch(`/communities/${community._id}`, body);
       onSaved(data.community);
@@ -208,15 +204,7 @@ function SettingsModal({ community, isOwner, onClose, onSaved }) {
             </button>
           ))}
         </div>
-        <p className="text-[11px] text-zinc-400 mb-4">{isOwner ? "Only you (the owner) can change privacy." : "Only the owner can change privacy."}</p>
-
-        <label className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-1.5 block">Avatar URL <span className="text-zinc-300 normal-case font-normal">· optional</span></label>
-        <input value={avatar} onChange={(e) => setAvatar(e.target.value)} placeholder="https://…"
-          className="w-full border border-zinc-200 rounded-xl px-3 py-2.5 text-sm text-zinc-800 outline-none focus:border-rose-400 mb-4" />
-
-        <label className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-1.5 block">Cover URL <span className="text-zinc-300 normal-case font-normal">· optional</span></label>
-        <input value={cover} onChange={(e) => setCover(e.target.value)} placeholder="https://…"
-          className="w-full border border-zinc-200 rounded-xl px-3 py-2.5 text-sm text-zinc-800 outline-none focus:border-rose-400 mb-5" />
+        <p className="text-[11px] text-zinc-400 mb-5">{isOwner ? "Only you (the owner) can change privacy." : "Only the owner can change privacy."}</p>
 
         {error && <p className="text-sm text-rose-500 mb-3">{error}</p>}
 
