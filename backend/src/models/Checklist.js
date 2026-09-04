@@ -5,8 +5,13 @@ import mongoose from "mongoose";
 const checklistItemSchema = new mongoose.Schema(
   {
     text: { type: String, required: true, trim: true, maxlength: 300 },
+    // COMMON scope: shared done flag (e.g. "ticket booking" — done for everyone).
     done: { type: Boolean, default: false },
     doneBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+    // INDIVIDUAL scope: each member ticks for themselves (e.g. "raincoat" — one
+    // person ticking it doesn't tick it for the others). Item is "done for me"
+    // when my id is in this array.
+    checkedBy: { type: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }], default: [] },
   },
   { _id: true, timestamps: true }
 );
@@ -15,6 +20,8 @@ const checklistSchema = new mongoose.Schema(
   {
     trip: { type: mongoose.Schema.Types.ObjectId, ref: "Trip", required: true, index: true },
     title: { type: String, trim: true, maxlength: 120, default: "Checklist" },
+    // "common" = one shared tick state; "individual" = per-member tick state.
+    scope: { type: String, enum: ["common", "individual"], default: "common" },
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
     items: { type: [checklistItemSchema], default: [] },
   },

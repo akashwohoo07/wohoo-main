@@ -11,6 +11,9 @@ const round2 = (n) => Math.round((Number(n) + Number.EPSILON) * 100) / 100;
 
 const memberId = (m) => (m.user?._id || m.user || "").toString();
 const memberUser = (m) => m.user || {};
+// Robust display name — never render a blank row even if `user` wasn't populated.
+const memberName = (m) => memberUser(m).name || memberUser(m).email || "Member";
+const roleTag = (m) => (m.role ? m.role[0].toUpperCase() + m.role.slice(1) : "Member");
 const initials = (name = "?") => name.trim().charAt(0).toUpperCase() || "?";
 
 function Avatar({ user, size = 36 }) {
@@ -181,7 +184,7 @@ function ExpenseModal({ trip, currentUser, onClose, onSaved }) {
             >
               {members.map((m) => (
                 <option key={memberId(m)} value={memberId(m)}>
-                  {memberUser(m).name}{memberId(m) === myId ? " (you)" : ""}
+                  {memberName(m)}{memberId(m) === myId ? " (you)" : ""} · {roleTag(m)}
                 </option>
               ))}
             </select>
@@ -221,7 +224,8 @@ function ExpenseModal({ trip, currentUser, onClose, onSaved }) {
                         {on && <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
                       </span>
                       <Avatar user={memberUser(m)} size={30} />
-                      <span className="text-sm text-zinc-700 truncate">{memberUser(m).name}{id === myId ? " (you)" : ""}</span>
+                      <span className="text-sm text-zinc-700 truncate">{memberName(m)}{id === myId ? " (you)" : ""}</span>
+                      <span className="text-[10px] font-semibold text-zinc-400 bg-zinc-100 rounded-full px-1.5 py-0.5 flex-shrink-0">{roleTag(m)}</span>
                     </button>
 
                     {on && method === "equal" && (

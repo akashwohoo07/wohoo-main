@@ -103,6 +103,7 @@ export const createChecklist = async (req, res, next) => {
   try {
     if (!(await loadMembership(req, res))) return;
     const title = (req.body?.title || "Checklist").trim().slice(0, 120) || "Checklist";
+    const scope = req.body?.scope === "individual" ? "individual" : "common";
     const items = Array.isArray(req.body?.items)
       ? req.body.items
           .map((i) => (typeof i === "string" ? i : i?.text))
@@ -113,6 +114,7 @@ export const createChecklist = async (req, res, next) => {
     const checklist = await Checklist.create({
       trip: req.params.tripId,
       title,
+      scope,
       createdBy: req.user._id,
       items,
     });
@@ -165,24 +167,38 @@ export const addItem = async (req, res, next) => {
 export const updateItem = async (req, res, next) => {
   try {
     if (!(await loadMembership(req, res))) return;
-    const set = {};
+
+    const checklist = await Checklist.findOne({ _id: req.params.id, trip: req.params.tripId });
+    if (!checklist) return res.status(404).json({ success: false, message: "Checklist not found" });
+    const item = checklist.items.id(req.params.itemId);
+    if (!item) return res.status(404).json({ success: false, message: "Item not found" });
+
+    let touched = false;
+
     if (typeof req.body?.done === "boolean") {
-      set["items.$.done"] = req.body.done;
-      set["items.$.doneBy"] = req.body.done ? req.user._id : null;
+      if (checklist.scope === "individual") {
+        // Per-member tick: add/remove ME from checkedBy — never touches others.
+        const me = req.user._id.toString();
+        const has = item.checkedBy.some((u) => u.toString() === me);
+        if (req.body.done && !has) item.checkedBy.push(req.user._id);
+        if (!req.body.done && has) item.checkedBy = item.checkedBy.filter((u) => u.toString() !== me);
+      } else {
+        // Shared tick for everyone.
+        item.done = req.body.done;
+        item.doneBy = req.body.done ? req.user._id : null;
+      }
+      touched = true;
     }
+
     if (typeof req.body?.text === "string" && req.body.text.trim()) {
-      set["items.$.text"] = req.body.text.trim().slice(0, 300);
+      item.text = req.body.text.trim().slice(0, 300);
+      touched = true;
     }
-    if (Object.keys(set).length === 0) {
-      return res.status(400).json({ success: false, message: "Nothing to update" });
-    }
-    const updated = await Checklist.findOneAndUpdate(
-      { _id: req.params.id, trip: req.params.tripId, "items._id": req.params.itemId },
-      { $set: set },
-      { new: true }
-    );
-    if (!updated) return res.status(404).json({ success: false, message: "Item not found" });
-    await returnChecklist(updated._id, res);
+
+    if (!touched) return res.status(400).json({ success: false, message: "Nothing to update" });
+
+    await checklist.save();
+    await returnChecklist(checklist._id, res);
   } catch (err) {
     next(err);
   }

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { NotebookPen, ListChecks, Plus, Trash2, Loader2, Send, Check, Square, CheckSquare } from "lucide-react";
+import { NotebookPen, ListChecks, Plus, Trash2, Loader2, Send, Check, Square, CheckSquare, Users, User } from "lucide-react";
 import api from "../../api/axios";
 import { useAuth } from "../../context/AuthContext";
 
@@ -132,13 +132,32 @@ function ChecklistCard({ tripId, checklist, myId, isOwner, onChanged, onDeleted 
   const [itemText, setItemText] = useState("");
   const [busy, setBusy] = useState(false);
   const canDeleteList = String(checklist.createdBy?._id) === myId || isOwner;
-  const done = checklist.items.filter((i) => i.done).length;
+  const isIndividual = checklist.scope === "individual";
+  // "Done" is per-user for individual lists, shared for common lists.
+  const itemDone = (item) =>
+    isIndividual ? (item.checkedBy || []).some((id) => String(id) === myId) : !!item.done;
+  const done = checklist.items.filter(itemDone).length;
 
-  const toggle = async (item) => {
-    try {
-      const { data } = await api.patch(`/trips/${tripId}/checklists/${checklist._id}/items/${item._id}`, { done: !item.done });
-      onChanged(data.checklist);
-    } catch { /* ignore */ }
+  // Optimistic toggle: flip the checkbox instantly, then persist in the
+  // background and revert if the request fails (removes the ~0.5s lag).
+  const toggle = (item) => {
+    const next = !itemDone(item);
+    const optimistic = {
+      ...checklist,
+      items: checklist.items.map((i) => {
+        if (i._id !== item._id) return i;
+        if (isIndividual) {
+          const arr = (i.checkedBy || []).map(String);
+          return { ...i, checkedBy: next ? [...arr, myId] : arr.filter((x) => x !== myId) };
+        }
+        return { ...i, done: next };
+      }),
+    };
+    onChanged(optimistic);
+    api
+      .patch(`/trips/${tripId}/checklists/${checklist._id}/items/${item._id}`, { done: next })
+      .then(({ data }) => onChanged(data.checklist))
+      .catch(() => onChanged(checklist)); // revert on failure
   };
   const addItem = async (e) => {
     e?.preventDefault();
@@ -166,8 +185,13 @@ function ChecklistCard({ tripId, checklist, myId, isOwner, onChanged, onDeleted 
     <div className="bg-white border border-zinc-100 rounded-2xl p-4">
       <div className="flex items-center justify-between mb-2">
         <div className="min-w-0">
-          <h3 className="text-sm font-semibold text-zinc-800 truncate">{checklist.title}</h3>
-          <p className="text-[11px] text-zinc-400">{done}/{checklist.items.length} done · by @{checklist.createdBy?.username}</p>
+          <div className="flex items-center gap-2">
+            <h3 className="text-sm font-semibold text-zinc-800 truncate">{checklist.title}</h3>
+            <span className={`inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full flex-shrink-0 ${isIndividual ? "bg-violet-50 text-violet-600" : "bg-sky-50 text-sky-600"}`}>
+              {isIndividual ? <><User className="w-2.5 h-2.5" /> Personal</> : <><Users className="w-2.5 h-2.5" /> Shared</>}
+            </span>
+          </div>
+          <p className="text-[11px] text-zinc-400">{done}/{checklist.items.length} done{isIndividual ? " (yours)" : ""} · by @{checklist.createdBy?.username}</p>
         </div>
         {canDeleteList && (
           <button onClick={deleteList} title="Delete checklist" className="text-zinc-300 hover:text-rose-500 flex-shrink-0"><Trash2 className="w-4 h-4" /></button>
@@ -175,17 +199,24 @@ function ChecklistCard({ tripId, checklist, myId, isOwner, onChanged, onDeleted 
       </div>
 
       <div className="space-y-1">
-        {checklist.items.map((item) => (
+        {checklist.items.map((item) => {
+          const mine = itemDone(item);
+          const others = isIndividual ? (item.checkedBy || []).length : 0;
+          return (
           <div key={item._id} className="group flex items-center gap-2.5 py-1">
             <button onClick={() => toggle(item)} className="flex-shrink-0 text-zinc-400 hover:text-rose-500">
-              {item.done ? <CheckSquare className="w-5 h-5 text-rose-500" /> : <Square className="w-5 h-5" />}
+              {mine ? <CheckSquare className="w-5 h-5 text-rose-500" /> : <Square className="w-5 h-5" />}
             </button>
-            <span className={`flex-1 text-sm ${item.done ? "line-through text-zinc-300" : "text-zinc-700"}`}>{item.text}</span>
+            <span className={`flex-1 text-sm ${mine ? "line-through text-zinc-300" : "text-zinc-700"}`}>{item.text}</span>
+            {isIndividual && others > 0 && (
+              <span className="text-[10px] text-zinc-400 flex-shrink-0" title={`${others} member(s) checked this`}>{others} ✓</span>
+            )}
             <button onClick={() => deleteItem(item)} className="text-zinc-300 hover:text-rose-500 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity flex-shrink-0">
               <Trash2 className="w-3.5 h-3.5" />
             </button>
           </div>
-        ))}
+          );
+        })}
       </div>
 
       <form onSubmit={addItem} className="flex items-center gap-2 mt-3">
@@ -202,11 +233,12 @@ function Checklists({ tripId, myId, isOwner }) {
   const [checklists, setChecklists] = useState([]);
   const [loading, setLoading] = useState(true);
   const [newTitle, setNewTitle] = useState("");
+  const [newScope, setNewScope] = useState("common");
   const [creating, setCreating] = useState(false);
   const seededRef = useRef(false);
 
-  const create = useCallback(async (title, items) => {
-    const { data } = await api.post(`/trips/${tripId}/checklists`, { title, items });
+  const create = useCallback(async (title, items, scope = "common") => {
+    const { data } = await api.post(`/trips/${tripId}/checklists`, { title, items, scope });
     setChecklists((prev) => [...prev, data.checklist]);
     return data.checklist;
   }, [tripId]);
@@ -240,7 +272,7 @@ function Checklists({ tripId, myId, isOwner }) {
     const t = newTitle.trim();
     if (!t) return;
     setCreating(true);
-    try { await create(t, []); setNewTitle(""); } catch { /* ignore */ } finally { setCreating(false); }
+    try { await create(t, [], newScope); setNewTitle(""); setNewScope("common"); } catch { /* ignore */ } finally { setCreating(false); }
   };
 
   if (loading) return <div className="flex justify-center py-16"><Loader2 className="w-6 h-6 animate-spin text-zinc-300" /></div>;
@@ -251,12 +283,23 @@ function Checklists({ tripId, myId, isOwner }) {
         <ChecklistCard key={c._id} tripId={tripId} checklist={c} myId={myId} isOwner={isOwner} onChanged={onChanged} onDeleted={onDeleted} />
       ))}
 
-      <form onSubmit={addChecklist} className="flex items-center gap-2 bg-white border border-dashed border-zinc-200 rounded-2xl px-4 py-3">
-        <ListChecks className="w-4 h-4 text-zinc-400 flex-shrink-0" />
-        <input value={newTitle} onChange={(e) => setNewTitle(e.target.value)} placeholder="New checklist name…" className="flex-1 outline-none text-sm bg-transparent" />
-        <button type="submit" disabled={creating || !newTitle.trim()} className="inline-flex items-center gap-1 text-sm font-medium text-rose-500 hover:text-rose-600 disabled:opacity-40 flex-shrink-0">
-          {creating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />} Add
-        </button>
+      <form onSubmit={addChecklist} className="bg-white border border-dashed border-zinc-200 rounded-2xl px-4 py-3 space-y-2.5">
+        <div className="flex items-center gap-2">
+          <ListChecks className="w-4 h-4 text-zinc-400 flex-shrink-0" />
+          <input value={newTitle} onChange={(e) => setNewTitle(e.target.value)} placeholder="New checklist name…" className="flex-1 outline-none text-sm bg-transparent" />
+          <button type="submit" disabled={creating || !newTitle.trim()} className="inline-flex items-center gap-1 text-sm font-medium text-rose-500 hover:text-rose-600 disabled:opacity-40 flex-shrink-0">
+            {creating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />} Add
+          </button>
+        </div>
+        <div className="flex items-center gap-1.5 pl-6">
+          <button type="button" onClick={() => setNewScope("common")} className={`inline-flex items-center gap-1 text-[11px] font-medium px-2.5 py-1 rounded-full border transition-colors ${newScope === "common" ? "bg-sky-50 border-sky-200 text-sky-600" : "border-zinc-200 text-zinc-400 hover:text-zinc-600"}`}>
+            <Users className="w-3 h-3" /> Shared
+          </button>
+          <button type="button" onClick={() => setNewScope("individual")} className={`inline-flex items-center gap-1 text-[11px] font-medium px-2.5 py-1 rounded-full border transition-colors ${newScope === "individual" ? "bg-violet-50 border-violet-200 text-violet-600" : "border-zinc-200 text-zinc-400 hover:text-zinc-600"}`}>
+            <User className="w-3 h-3" /> Personal
+          </button>
+          <span className="text-[10px] text-zinc-400 ml-1">{newScope === "individual" ? "Everyone ticks their own (e.g. raincoat)" : "One shared tick (e.g. book tickets)"}</span>
+        </div>
       </form>
     </div>
   );

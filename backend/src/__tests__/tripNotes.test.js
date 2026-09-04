@@ -131,5 +131,32 @@ describe("Trip notes & checklists", () => {
       const stranger = await createAuthUser({ username: uname() });
       expect((await request(app).get(lists()).set(auth(stranger.token))).status).toBe(403);
     });
+
+    it("individual-scope: each member ticks their own item without affecting others", async () => {
+      const c = (await create(owner.token, { title: "Packing", items: ["Raincoat"], scope: "individual" })).body.checklist;
+      expect(c.scope).toBe("individual");
+      const itemId = c.items[0]._id;
+
+      // editor checks it for themselves
+      let res = await request(app).patch(`${lists()}/${c._id}/items/${itemId}`).set(auth(editor.token)).send({ done: true });
+      expect(res.status).toBe(200);
+      let item = res.body.checklist.items.find((i) => i._id === itemId);
+      expect(item.checkedBy.map(String)).toContain(String(editor.user._id));
+      expect(item.checkedBy.map(String)).not.toContain(String(viewer.user._id));
+      // shared flag is untouched for individual lists
+      expect(item.done).toBe(false);
+
+      // viewer checks it too — both are now present
+      res = await request(app).patch(`${lists()}/${c._id}/items/${itemId}`).set(auth(viewer.token)).send({ done: true });
+      item = res.body.checklist.items.find((i) => i._id === itemId);
+      expect(item.checkedBy.map(String)).toEqual(
+        expect.arrayContaining([String(editor.user._id), String(viewer.user._id)])
+      );
+
+      // editor unchecks — viewer's tick remains
+      res = await request(app).patch(`${lists()}/${c._id}/items/${itemId}`).set(auth(editor.token)).send({ done: false });
+      item = res.body.checklist.items.find((i) => i._id === itemId);
+      expect(item.checkedBy.map(String)).toEqual([String(viewer.user._id)]);
+    });
   });
 });
