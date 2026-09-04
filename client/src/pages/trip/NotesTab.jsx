@@ -188,7 +188,7 @@ function ChecklistCard({ tripId, checklist, myId, isOwner, onChanged, onDeleted 
           <div className="flex items-center gap-2">
             <h3 className="text-sm font-semibold text-zinc-800 truncate">{checklist.title}</h3>
             <span className={`inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full flex-shrink-0 ${isIndividual ? "bg-violet-50 text-violet-600" : "bg-sky-50 text-sky-600"}`}>
-              {isIndividual ? <><User className="w-2.5 h-2.5" /> Personal</> : <><Users className="w-2.5 h-2.5" /> Shared</>}
+              {isIndividual ? <><User className="w-2.5 h-2.5" /> Individual</> : <><Users className="w-2.5 h-2.5" /> Shared</>}
             </span>
           </div>
           <p className="text-[11px] text-zinc-400">{done}/{checklist.items.length} done{isIndividual ? " (yours)" : ""} · by @{checklist.createdBy?.username}</p>
@@ -296,9 +296,9 @@ function Checklists({ tripId, myId, isOwner }) {
             <Users className="w-3 h-3" /> Shared
           </button>
           <button type="button" onClick={() => setNewScope("individual")} className={`inline-flex items-center gap-1 text-[11px] font-medium px-2.5 py-1 rounded-full border transition-colors ${newScope === "individual" ? "bg-violet-50 border-violet-200 text-violet-600" : "border-zinc-200 text-zinc-400 hover:text-zinc-600"}`}>
-            <User className="w-3 h-3" /> Personal
+            <User className="w-3 h-3" /> Individual
           </button>
-          <span className="text-[10px] text-zinc-400 ml-1">{newScope === "individual" ? "Everyone ticks their own (e.g. raincoat)" : "One shared tick (e.g. book tickets)"}</span>
+          {newScope === "individual" && <span className="text-[10px] text-zinc-400 ml-1">Everyone ticks their own</span>}
         </div>
       </form>
     </div>
