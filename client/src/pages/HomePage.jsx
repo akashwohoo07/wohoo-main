@@ -70,6 +70,19 @@ const DESTINATIONS = [
   { name:"Sahara",      country:"Morocco",   tag:"Desert",    color:"#DDD6FE", img:"https://images.unsplash.com/photo-1509316785289-025f5b846b35?w=800&q=85" },
 ];
 
+// Handpicked Indian destinations (images verified). Same card shape as DESTINATIONS.
+const INDIA_DESTINATIONS = [
+  { name:"Taj Mahal",  country:"Agra · Uttar Pradesh", tag:"Icon",      color:"#FBCFE8", img:"https://images.unsplash.com/photo-1564507592333-c60657eea523?w=800&q=85" },
+  { name:"Jaipur",     country:"Rajasthan",            tag:"Heritage",  color:"#FDE68A", img:"https://images.unsplash.com/photo-1477587458883-47145ed94245?w=800&q=85" },
+  { name:"Backwaters", country:"Kerala",               tag:"Serene",    color:"#A7F3D0", img:"https://images.unsplash.com/photo-1602216056096-3b40cc0c9944?w=800&q=85" },
+  { name:"Goa",        country:"West Coast",           tag:"Beaches",   color:"#BAE6FD", img:"https://images.unsplash.com/photo-1512343879784-a960bf40e7f2?w=800&q=85" },
+  { name:"Varanasi",   country:"Uttar Pradesh",        tag:"Spiritual", color:"#FBD38D", img:"https://images.unsplash.com/photo-1571536802807-30451e3955d8?w=800&q=85" },
+  { name:"New Delhi",  country:"The Capital",          tag:"Historic",  color:"#DDD6FE", img:"https://images.unsplash.com/photo-1587474260584-136574528ed5?w=800&q=85" },
+  { name:"Mumbai",     country:"Maharashtra",          tag:"Coastal",   color:"#FECACA", img:"https://images.unsplash.com/photo-1570168007204-dfb528c6958f?w=800&q=85" },
+  { name:"Kolkata",    country:"West Bengal",          tag:"Culture",   color:"#FDE68A", img:"https://images.unsplash.com/photo-1571679654681-ba01b9e1e117?w=800&q=85" },
+  { name:"Manali",     country:"Himachal Pradesh",     tag:"Mountains", color:"#BFDBFE", img:"https://images.unsplash.com/photo-1605649487212-47bdab064df7?w=800&q=85" },
+];
+
 const EXPERIENCES = [
   { Icon: Mountain, title:"Mountain Peaks",  sub:"Where silence speaks loudest",     img:"https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=700&q=85" },
   { Icon: Waves,    title:"Ocean Escapes",   sub:"Drift into liquid paradise",         img:"https://images.unsplash.com/photo-1505118380757-91f5f5632de0?w=700&q=85" },
@@ -466,6 +479,34 @@ export default function WohooHome() {
           )))}
         </div>
       </div>
+
+      {/* ══════════════════════════════
+          3a. EXPLORE INDIA
+      ══════════════════════════════ */}
+      <section id="india" style={{ padding:sectionPad, background:"#FAFAF8" }}>
+        <div style={{ maxWidth:1280, margin:"0 auto" }}>
+
+          <div style={{ display:"flex", alignItems:"flex-end", justifyContent:"space-between", flexWrap:"wrap", gap:20, marginBottom:20 }}>
+            <div className="rev-l">
+              <div style={{ fontFamily:"'Jost'", fontSize:"11px", fontWeight:600, letterSpacing:".2em", textTransform:"uppercase", color:"rgba(17,17,16,.38)", marginBottom:14 }}>
+                — Explore India
+              </div>
+              <h2 style={{ fontFamily:"'Cormorant Garamond',serif", fontSize:"clamp(2.2rem,5vw,4.5rem)", fontWeight:700, lineHeight:.92, letterSpacing:"-0.03em" }}>
+                Incredible India,<br />
+                <em style={{ color:"#F59E0B", fontStyle:"italic" }}>one journey at a time.</em>
+              </h2>
+            </div>
+            <p className="rev-r" style={{ fontFamily:"'Jost'", fontSize:".92rem", fontWeight:300, lineHeight:1.85, color:"rgba(17,17,16,.48)", maxWidth:"30ch" }}>
+              From Himalayan snowlines to Kerala's palm-fringed backwaters — the subcontinent's most soul-stirring places, ready for you to plan.
+            </p>
+          </div>
+          <div style={{ height:1, background:"rgba(17,17,16,.07)", marginBottom:48 }} />
+
+          <div style={{ display:"grid", gridTemplateColumns: isMob ? "1fr 1fr" : "repeat(3,1fr)", gap: isMob?12:20 }}>
+            {INDIA_DESTINATIONS.map((d,i)=><DestCard key={d.name} d={d} i={i} isMob={isMob} />)}
+          </div>
+        </div>
+      </section>
 
       {/* ══════════════════════════════
           3. DESTINATIONS
