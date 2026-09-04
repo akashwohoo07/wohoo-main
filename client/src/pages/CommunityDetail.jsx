@@ -579,12 +579,23 @@ export default function CommunityDetail() {
           <p className="text-xs text-zinc-400 truncate">{creator ? `created by ${creator} · ` : ""}{community.membersCount} members</p>
         </button>
         {!locked && (
-          <div className="ml-auto flex items-center gap-0.5">
-            <button
-              onClick={() => setSearchOpen((o) => { if (o) { setSearchQ(""); setSearchResults([]); } return !o; })}
-              className={`p-2 rounded-full transition-colors ${searchOpen ? "bg-rose-50 text-rose-500" : "hover:bg-zinc-100 text-zinc-500"}`}
-              title="Search messages"
-            ><Search className="w-5 h-5" /></button>
+          <div className="ml-auto flex items-center gap-1">
+            {/* Small always-visible search input (in place of the search icon). */}
+            <div className="relative">
+              <Search className="w-3.5 h-3.5 text-zinc-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <input
+                value={searchQ}
+                onChange={(e) => setSearchQ(e.target.value)}
+                onFocus={() => setSearchOpen(true)}
+                placeholder="Search"
+                className="w-24 sm:w-40 focus:w-36 sm:focus:w-52 bg-zinc-100 rounded-full pl-7 pr-6 py-1.5 text-xs sm:text-sm text-zinc-700 placeholder-zinc-400 outline-none focus:ring-2 focus:ring-rose-100 transition-all"
+              />
+              {searchQ && (
+                <button onClick={() => { setSearchQ(""); setSearchResults([]); }} className="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600" title="Clear">
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
             <button onClick={() => setShowMembers(true)} className="p-2 rounded-full hover:bg-zinc-100 text-zinc-500" title="Members"><Users className="w-5 h-5" /></button>
             {canManage && (
               <button onClick={() => setShowSettings(true)} className="p-2 rounded-full hover:bg-zinc-100 text-zinc-500" title="Community settings"><Settings className="w-5 h-5" /></button>
@@ -593,39 +604,26 @@ export default function CommunityDetail() {
         )}
       </header>
 
-      {/* Inline message search — a compact bar under the header (the header and
-          its icons stay visible), with results dropping down over the chat. */}
-      {searchOpen && !locked && (
-        <div className="relative bg-white border-b border-zinc-100 flex-shrink-0 z-30">
-          <div className="flex items-center gap-2 px-3 sm:px-4 py-2">
-            <div className="relative flex-1">
-              <Search className="w-4 h-4 text-zinc-400 absolute left-3 top-1/2 -translate-y-1/2" />
-              <input autoFocus value={searchQ} onChange={(e) => setSearchQ(e.target.value)} placeholder="Search this community's messages…"
-                className="w-full bg-zinc-100 rounded-full pl-9 pr-9 py-2 text-sm outline-none focus:ring-2 focus:ring-rose-100" />
-              {searching && <Loader2 className="w-4 h-4 text-zinc-300 animate-spin absolute right-3 top-1/2 -translate-y-1/2" />}
-            </div>
-            <button onClick={() => { setSearchOpen(false); setSearchQ(""); setSearchResults([]); }} className="text-sm font-medium text-zinc-500 hover:text-zinc-700 px-1.5">Cancel</button>
+      {/* Results dropdown for the header's search input — over the chat, header
+          (and its icons) stay put. Shows only once you type. */}
+      {searchOpen && !locked && searchQ.trim().length > 0 && (
+        <div className="relative z-30">
+          <div className="absolute left-0 right-0 top-0 max-h-[55vh] overflow-y-auto bg-white border-b border-zinc-100 shadow-lg px-2 py-2 space-y-0.5">
+            {searchResults.length === 0 && !searching ? (
+              <p className="text-sm text-zinc-400 text-center py-8">No messages match “{searchQ.trim()}”.</p>
+            ) : (
+              searchResults.map((m) => (
+                <button key={m._id} onClick={() => { jumpToMessage(m._id); setSearchQ(""); setSearchResults([]); }}
+                  className="w-full flex items-start gap-3 p-2.5 rounded-xl hover:bg-zinc-50 text-left">
+                  <Avatar user={m.sender} size={30} />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs text-zinc-400">@{m.sender?.username || m.sender?.name} · {timeLabel(m.createdAt)}</p>
+                    <p className="text-sm text-zinc-700 truncate">{m.text || (m.type === "trip_share" ? "Shared a trip" : "")}</p>
+                  </div>
+                </button>
+              ))
+            )}
           </div>
-
-          {/* Results dropdown (only once you start typing) */}
-          {searchQ.trim().length > 0 && (
-            <div className="absolute left-0 right-0 top-full max-h-[55vh] overflow-y-auto bg-white border-b border-zinc-100 shadow-lg px-2 pb-2 space-y-0.5">
-              {searchResults.length === 0 && !searching ? (
-                <p className="text-sm text-zinc-400 text-center py-8">No messages match “{searchQ.trim()}”.</p>
-              ) : (
-                searchResults.map((m) => (
-                  <button key={m._id} onClick={() => { jumpToMessage(m._id); setSearchOpen(false); setSearchQ(""); setSearchResults([]); }}
-                    className="w-full flex items-start gap-3 p-2.5 rounded-xl hover:bg-zinc-50 text-left">
-                    <Avatar user={m.sender} size={30} />
-                    <div className="min-w-0 flex-1">
-                      <p className="text-xs text-zinc-400">@{m.sender?.username || m.sender?.name} · {timeLabel(m.createdAt)}</p>
-                      <p className="text-sm text-zinc-700 truncate">{m.text || (m.type === "trip_share" ? "Shared a trip" : "")}</p>
-                    </div>
-                  </button>
-                ))
-              )}
-            </div>
-          )}
         </div>
       )}
 
