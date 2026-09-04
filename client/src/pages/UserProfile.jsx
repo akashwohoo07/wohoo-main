@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from "react-router-dom";
 import { UserRound, MapPin, Calendar, Hash, Users } from "lucide-react";
 import api from "../api/axios";
 import { useAuth } from "../context/AuthContext";
+import { useSeo } from "../lib/seo";
 
 function Skeleton({ className }) {
   return <div className={`bg-zinc-100 animate-pulse rounded-xl ${className}`} />;
@@ -152,6 +153,11 @@ export default function UserProfile() {
   const [data, setData] = useState(null); // { profile, trips, isFollowing, followersCount, followingCount }
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+
+  useSeo({
+    title: data?.profile?.name ? `${data.profile.name} (@${username})` : `@${username}`,
+    description: `${data?.profile?.name || "@" + username} on Wohoo — travel trips, itineraries and destinations. Follow and plan trips together.`,
+  });
 
   const [followLoading, setFollowLoading] = useState(false);
   const [showUnfollowModal, setShowUnfollowModal] = useState(false);

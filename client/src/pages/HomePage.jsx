@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { Mountain, Waves, Trees, Moon, Globe, Star, Check } from "lucide-react";
+import { useSeo } from "../lib/seo";
 
 /* ══════════════════════════════════════════════════
    GLOBAL CSS
@@ -296,6 +297,7 @@ function Stat({ value, suffix, label }) {
    MAIN
 ══════════════════════════════════════════════════ */
 export default function WohooHome() {
+  useSeo({ full: true });
   useScrollReveal();
   const heroRef = useRef(null);
   const [parallax, setParallax] = useState(0);
@@ -834,6 +836,43 @@ export default function WohooHome() {
               </span>
             ))}
           </div>
+        </div>
+      </section>
+
+      {/* ══════════════════════════════
+          SEO CONTENT — real crawlable copy targeting the keywords people
+          actually search. Visible (not hidden) so it's Google-safe.
+      ══════════════════════════════ */}
+      <section style={{ background:"#0C0C0B", padding: isMob?"56px 20px":"96px 5vw", borderTop:"1px solid rgba(250,250,248,.05)" }}>
+        <div style={{ maxWidth:1000, margin:"0 auto" }}>
+          <h2 style={{ fontFamily:"'Cormorant Garamond',serif", fontWeight:700, color:"#FAFAF8", fontSize: isMob?"2rem":"3rem", lineHeight:1, letterSpacing:"-0.02em", marginBottom:20 }}>
+            The free travel itinerary planner you build together
+          </h2>
+          <p style={{ fontFamily:"'Jost'", fontWeight:300, color:"rgba(250,250,248,.6)", fontSize: isMob?"0.95rem":"1.05rem", lineHeight:1.85, maxWidth:"70ch", marginBottom:44 }}>
+            Wohoo is a collaborative <strong style={{color:"rgba(250,250,248,.85)",fontWeight:500}}>trip planner</strong> and
+            {" "}<strong style={{color:"rgba(250,250,248,.85)",fontWeight:500}}>travel itinerary maker</strong>. Create a
+            day-by-day plan, invite friends as editors or viewers, split expenses fairly down to the last rupee, track your
+            flights and Indian trains, and discover places to stay and eat — all in one place, for free.
+          </p>
+
+          <div style={{ display:"grid", gridTemplateColumns: isMob?"1fr":"1fr 1fr", gap: isMob?28:40 }}>
+            {[
+              { h:"Plan a trip with friends", p:"Invite anyone by email or username. Owners and editors build the plan; everyone stays in sync in real time — no more messy group chats and spreadsheets." },
+              { h:"Day-by-day itinerary builder", p:"Add destinations, hotels, restaurants, activities and transport to each day, reorder by drag, and see the whole route drawn on a live map." },
+              { h:"Split expenses (like Splitwise)", p:"Log shared costs, split equally or by exact amount, percentage or shares, and get clear settle-up suggestions so nobody's left chasing money." },
+              { h:"Flights & Indian trains", p:"Look up a flight, add a train by number, name, station or PNR, and see the route between two stations on the map — built for travel in India and beyond." },
+            ].map((f) => (
+              <div key={f.h}>
+                <h3 style={{ fontFamily:"'Jost'", fontWeight:500, color:"#FAFAF8", fontSize: isMob?"1.05rem":"1.2rem", marginBottom:8 }}>{f.h}</h3>
+                <p style={{ fontFamily:"'Jost'", fontWeight:300, color:"rgba(250,250,248,.52)", fontSize:"0.92rem", lineHeight:1.75 }}>{f.p}</p>
+              </div>
+            ))}
+          </div>
+
+          <p style={{ fontFamily:"'Jost'", fontWeight:300, color:"rgba(250,250,248,.4)", fontSize:"0.85rem", lineHeight:1.8, marginTop:44 }}>
+            Ready to start? <a href="/signup" style={{ color:"#F9A8D4", textDecoration:"underline" }}>Create your free Wohoo account</a> and
+            plan your next trip — solo or with friends. Wohoo.in works on every device, no app install required.
+          </p>
         </div>
       </section>
 
