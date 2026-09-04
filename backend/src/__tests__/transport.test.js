@@ -20,6 +20,25 @@ describe("Transport: station autocomplete (bundled dataset)", () => {
     expect(searchStations("a")).toHaveLength(0); // needs >= 2 chars
   });
 
+  it("matches an exact station code", () => {
+    const r = searchStations("NDLS", 5);
+    expect(r[0].code).toBe("NDLS");
+  });
+
+  it("finds a city's stations even when a station isn't named after the city", () => {
+    const codes = searchStations("pune", 8).map((s) => s.code);
+    expect(codes).toContain("PUNE");
+    expect(codes).toContain("SVJR"); // Shivajinagar — not named "Pune"
+    const delhi = searchStations("delhi", 8).map((s) => s.code);
+    expect(delhi).toContain("NZM"); // Hazrat Nizamuddin
+  });
+
+  it("never repeats a station across ranking buckets", () => {
+    const r = searchStations("delhi", 8);
+    const codes = r.map((s) => s.code);
+    expect(new Set(codes).size).toBe(codes.length);
+  });
+
   it("requires auth (401)", async () => {
     expect((await request(app).get("/api/transport/stations?q=delhi")).status).toBe(401);
   });

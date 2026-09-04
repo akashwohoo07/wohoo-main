@@ -6,6 +6,18 @@ Update this file whenever a feature is added, changed, or removed. Keep entries 
 
 ## Changelog
 
+### 2026-09-04 — Trains: station search now matches by CITY too (still offline/free)
+- Evaluated live geocoders for "type a city → its stations": **Mapbox carries ZERO Indian
+  railway stations** (New Delhi / Howrah / CST all return 0 POIs) **and its ToS forbids retaining
+  results** — so it can't back station search or be cached into our DB. Google Places has stations
+  but costs per request + caching limits. Conclusion: our own bundled dataset is the right source.
+- Enhanced the offline search (`utils/stations.js`) to match station **name, code, address, AND
+  city** — via a curated "city → main stations" map (~55 cities, codes verified against the data).
+  So "pune" surfaces Shivajinagar, "delhi" surfaces Nizamuddin/Anand Vihar, etc. Ranking:
+  code-exact → city-alias → code-prefix → name-starts → name/address-contains; **deduped by code
+  (no repeats)**. Still $0, offline, instant, no ToS/rate-limit issues. Endpoint contract unchanged.
+- Tests: `transport.test.js` (+3: exact code, city→non-eponymous station, no-repeat). Backend 290 green.
+
 ### 2026-09-04 — Trains: station search fixed (offline dataset), select-from-list only
 - **Root cause of "manual not working":** the station autocomplete used Nominatim, which
   **blocks/rate-limits cloud server IPs** (Fly) → no suggestions in production.
