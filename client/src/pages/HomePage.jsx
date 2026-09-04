@@ -158,8 +158,11 @@ function Cursor() {
   }, []);
   return (
     <>
-      <div ref={dot} style={{ position:"fixed",top:0,left:0,width:8,height:8,borderRadius:"50%",background:"#111110",pointerEvents:"none",zIndex:9999,transform:"translate(-50%,-50%)",transition:"left .08s,top .08s" }} />
-      <div ref={ring} style={{ position:"fixed",top:0,left:0,width:36,height:36,borderRadius:"50%",border:"1.5px solid rgba(17,17,16,.22)",pointerEvents:"none",zIndex:9998,transform:"translate(-50%,-50%)",transition:"left .14s,top .14s,width .3s,height .3s" }} />
+      {/* mix-blend-mode:difference makes the cursor auto-invert against whatever
+          is behind it — white on dark sections, dark on light — so it's always
+          visible (and looks premium). */}
+      <div ref={dot} style={{ position:"fixed",top:0,left:0,width:8,height:8,borderRadius:"50%",background:"#fff",mixBlendMode:"difference",pointerEvents:"none",zIndex:9999,transform:"translate(-50%,-50%)",transition:"left .08s,top .08s" }} />
+      <div ref={ring} style={{ position:"fixed",top:0,left:0,width:36,height:36,borderRadius:"50%",border:"1.5px solid rgba(255,255,255,.6)",mixBlendMode:"difference",pointerEvents:"none",zIndex:9998,transform:"translate(-50%,-50%)",transition:"left .14s,top .14s,width .3s,height .3s" }} />
     </>
   );
 }
