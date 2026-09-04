@@ -5,9 +5,12 @@ import User from "../models/User.js";
 import { getR2, r2Configured, R2_BUCKET_NAME, R2_PUBLIC_BASE } from "../config/r2.js";
 
 // Image kinds users can upload and their server-enforced size caps (bytes).
+// Server-side size backstop on the (already compressed) uploaded object. The
+// browser compresses to a few hundred KB before uploading, so this is a safety
+// ceiling, not the everyday limit. 25 MB matches the client's original-file cap.
 const KINDS = {
-  avatar: { field: "avatar", maxBytes: 5 * 1024 * 1024 },   // 5 MB
-  cover:  { field: "cover",  maxBytes: 10 * 1024 * 1024 },  // 10 MB
+  avatar: { field: "avatar", maxBytes: 25 * 1024 * 1024 },
+  cover:  { field: "cover",  maxBytes: 25 * 1024 * 1024 },
 };
 // Only real image types (whitelist, not user-trusted). ext is what we store.
 const CONTENT_TYPES = {

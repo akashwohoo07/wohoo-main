@@ -2,7 +2,10 @@ import imageCompression from "browser-image-compression";
 import api from "../api/axios";
 
 export const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
-export const MAX_BYTES = { avatar: 5 * 1024 * 1024, cover: 10 * 1024 * 1024 };
+// The biggest ORIGINAL file a user may pick. It gets compressed down to a few
+// hundred KB before it's uploaded, so this is really a guard so the browser
+// never tries to decode an absurdly huge file.
+export const MAX_UPLOAD_BYTES = 25 * 1024 * 1024; // 25 MB
 
 // Resize + recompress on the CLIENT before uploading. Runs in a web worker, so
 // it never blocks the UI and puts ZERO load on our server (the server never
@@ -34,14 +37,19 @@ export async function uploadImage(file, kind, onProgress) {
   if (!ACCEPTED_IMAGE_TYPES.includes(file.type)) {
     throw new Error("Please choose a JPEG, PNG or WebP image.");
   }
+  // Guard the ORIGINAL before we hand it to the (browser) compressor.
+  if (file.size > MAX_UPLOAD_BYTES) {
+    throw new Error("Please choose an image under 25 MB.");
+  }
 
-  // 0) Compress/resize on-device first (keeps quality, shrinks size).
+  // 0) Compress/resize on-device first (keeps quality, shrinks size). This is
+  //    the version that actually gets uploaded to R2.
   const upload = await compress(file, kind);
 
-  // Safety backstop (compressed files are ~KB, so this basically never trips).
-  if (upload.size > (MAX_BYTES[kind] || MAX_BYTES.avatar)) {
-    const mb = Math.round((MAX_BYTES[kind] || MAX_BYTES.avatar) / (1024 * 1024));
-    throw new Error(`Image is too large (max ${mb} MB).`);
+  // Backstop (compressed files are ~KB; only trips if compression fell back to a
+  // huge original, which the 25 MB guard above already bounds).
+  if (upload.size > MAX_UPLOAD_BYTES) {
+    throw new Error("Image is too large (max 25 MB).");
   }
 
   // 1) Ask our backend for a short-lived signed URL (for the compressed type).

@@ -66,7 +66,7 @@ describe("Image uploads (R2 presigned)", () => {
 
     it("rejects an oversized image and deletes it (400)", async () => {
       const key = `avatars/${user._id}/huge.png`;
-      send.mockResolvedValueOnce({ ContentType: "image/png", ContentLength: 20 * 1024 * 1024 }); // HEAD
+      send.mockResolvedValueOnce({ ContentType: "image/png", ContentLength: 26 * 1024 * 1024 }); // HEAD (> 25 MB)
       send.mockResolvedValueOnce({}); // delete
       const res = await request(app).post("/api/uploads/confirm").set(auth(token)).send({ kind: "avatar", key });
       expect(res.status).toBe(400);
