@@ -1,6 +1,7 @@
 import express from "express";
 import { protect } from "../middleware/auth.js";
 import { searchAirports } from "../utils/airports.js";
+import { cacheGet, cacheSet } from "../utils/cache.js";
 
 const router = express.Router();
 router.use(protect);
@@ -9,6 +10,59 @@ router.use(protect);
 // GET /api/transport/airports?q=del  → [{ iata, name, city, country, lat, lng }]
 router.get("/airports", (req, res) => {
   res.json({ success: true, airports: searchAirports(req.query.q, 8) });
+});
+
+// ── Railway station autocomplete (OpenStreetMap — free, no key) ─────────────
+// GET /api/transport/stations?q=new+delhi → [{ name, city, state, lat, lng, label }]
+// Returns coordinates so a manually-added train can draw its track on the map.
+// Cached (TTL 24h) because Nominatim is rate-limited by fair-use policy.
+router.get("/stations", async (req, res) => {
+  const q = (req.query.q || "").trim();
+  if (q.length < 2) return res.json({ success: true, stations: [] });
+
+  const cacheKey = `stations:${q.toLowerCase()}`;
+  try {
+    const cached = await cacheGet(cacheKey);
+    if (cached) return res.json({ success: true, stations: cached });
+  } catch { /* cache miss is fine */ }
+
+  try {
+    // Bias to actual railway stations; Nominatim ranks by relevance.
+    const url =
+      `https://nominatim.openstreetmap.org/search?format=json&limit=8&addressdetails=1&namedetails=1` +
+      `&q=${encodeURIComponent(q + " railway station")}`;
+    const r = await fetch(url, {
+      headers: { "User-Agent": "WohooTripPlanner/1.0 (support@wohoo.in)", "Accept-Language": "en" },
+      signal: AbortSignal.timeout(6000),
+    });
+    const data = await r.json();
+
+    const stations = (Array.isArray(data) ? data : [])
+      .map((p) => {
+        const a = p.address || {};
+        const city = a.city || a.town || a.village || a.municipality || a.county || "";
+        const state = a.state || a.region || "";
+        // Prefer the station's own name over the full display string.
+        const name = p.namedetails?.name || p.name || (p.display_name || "").split(",")[0] || q;
+        return {
+          name,
+          city,
+          state,
+          country: a.country || "",
+          lat: parseFloat(p.lat),
+          lng: parseFloat(p.lon),
+          label: [name, city].filter(Boolean).join(", "),
+        };
+      })
+      .filter((s) => Number.isFinite(s.lat) && Number.isFinite(s.lng));
+
+    // Best-effort cache; never fail the request on cache write.
+    cacheSet(cacheKey, stations, 60 * 60 * 24).catch(() => {});
+    return res.json({ success: true, stations });
+  } catch (err) {
+    console.error("Station search error:", err.message);
+    return res.status(502).json({ success: false, error: "network_error", message: "Station search failed" });
+  }
 });
 
 // ── Flight lookup via AviationStack (server-side, avoids CORS/403) ──────────
@@ -183,25 +237,45 @@ router.get("/pnr", async (req, res) => {
       }
     );
     if (!response.ok) throw new Error(`RapidAPI responded ${response.status}`);
-    const data = await response.json();
+    const raw = await response.json();
+    // Different RapidAPI train providers wrap the payload differently
+    // (top-level vs { data: {...} }). Pick both fields defensively so we don't
+    // depend on one exact shape.
+    const d = raw?.data && typeof raw.data === "object" ? raw.data : raw;
+    const pick = (...keys) => {
+      for (const k of keys) {
+        const v = k.split(".").reduce((o, part) => (o == null ? o : o[part]), d);
+        if (v !== undefined && v !== null && v !== "") return v;
+      }
+      return "";
+    };
 
+    const passengers = pick("passenger_status", "PassengerStatus", "passengers") || [];
     return res.json({
       success: true,
       pnr: {
         pnrNum: pnr,
-        trainName: data.train_name || data.TrainName || "",
-        trainNum: data.train_no || data.TrainNumber || "",
-        from: data.boarding_point || data.BoardingPoint || "",
-        to: data.destination || data.DestinationStation || "",
-        date: data.date_of_journey || data.BoardingDate || "",
-        classType: data.class_code || data.ClassCode || "",
-        status: data.passenger_status?.[0]?.current_status || data.PassengerStatus?.[0]?.CurrentStatus || "",
-        passengers: data.passenger_status || data.PassengerStatus || [],
+        trainName: pick("train_name", "TrainName"),
+        trainNum: pick("train_no", "TrainNumber", "train_number"),
+        from: pick("boarding_point", "BoardingPoint", "boarding_station", "source_station"),
+        to: pick("destination", "DestinationStation", "reservation_upto", "destination_station"),
+        // Date the ticket is for — so we never have to ask the user.
+        date: pick("date_of_journey", "BoardingDate", "doj", "Doj"),
+        // Times / platform when the provider includes them (many don't — the
+        // client shows them only if present; platform is assigned near departure).
+        departureTime: pick("departure_time", "DepartureTime", "boarding_time", "sourceDepartureTime"),
+        arrivalTime: pick("arrival_time", "ArrivalTime", "destinationArrivalTime"),
+        platform: pick("expected_platform", "platform_number", "PlatformNumber", "platform"),
+        classType: pick("class_code", "ClassCode", "journey_class", "class"),
+        status: (Array.isArray(passengers) && (passengers[0]?.current_status || passengers[0]?.CurrentStatus)) ||
+          pick("chart_status", "ChartStatus") || "",
+        chartPrepared: pick("chart_prepared", "ChartPrepared"),
+        passengers: Array.isArray(passengers) ? passengers : [],
       },
     });
   } catch (err) {
     console.error("PNR lookup error:", err);
-    return res.status(500).json({ success: false, error: "api_error", message: "PNR lookup failed" });
+    return res.status(502).json({ success: false, error: "api_error", message: "PNR lookup failed — please try again" });
   }
 });
 

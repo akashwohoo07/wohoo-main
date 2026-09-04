@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Plane, TrainFront, Clock } from "lucide-react";
 import api from "../../api/axios";
+import StationInput from "../../components/StationInput";
 
 // ── Backend proxy helpers ──────────────────────────────────────
 // All external API calls go through /api/transport/* to avoid CORS
@@ -217,7 +218,7 @@ export function FlightSearchPanel({ onFill, initialFlightNum = "", initialDate =
 
 // ── TrainSearchPanel ───────────────────────────────────────────
 export function TrainSearchPanel({ onFill, initialQuery = "", initialDate = "" }) {
-  const [searchType, setSearchType] = useState("number"); // number | pnr | name
+  const [searchType, setSearchType] = useState("number"); // number | pnr | name | manual
   const [query, setQuery] = useState(initialQuery);
   const [date, setDate] = useState(initialDate);
   const [loading, setLoading] = useState(false);
@@ -225,11 +226,35 @@ export function TrainSearchPanel({ onFill, initialQuery = "", initialDate = "" }
   const [error, setError] = useState("");
   const [resolving, setResolving] = useState(false);
 
+  // Manual entry: two stations (with coords, so the track draws) + optional details.
+  const [mFrom, setMFrom] = useState(null); // { name, label, lat, lng }
+  const [mTo, setMTo] = useState(null);
+  const [mName, setMName] = useState("");
+  const [mDate, setMDate] = useState(initialDate);
+  const [mTime, setMTime] = useState("");
+
   const TYPES = [
     { id: "number", label: "Train No.",  placeholder: "e.g. 12001, 22691" },
     { id: "pnr",    label: "PNR",        placeholder: "10-digit PNR number" },
     { id: "name",   label: "Train Name", placeholder: "e.g. Shatabdi, Rajdhani" },
+    { id: "manual", label: "Manual",     placeholder: "" },
   ];
+
+  const addManual = () => {
+    if (!mFrom || !mTo) return;
+    onFill({
+      title: (mName.trim() || `${mFrom.name} → ${mTo.name}`).slice(0, 200),
+      fromStation: mFrom.label || mFrom.name,
+      toStation: mTo.label || mTo.name,
+      fromLat: mFrom.lat ?? null,
+      fromLng: mFrom.lng ?? null,
+      toLat: mTo.lat ?? null,
+      toLng: mTo.lng ?? null,
+      date: mDate || "",
+      time: mTime || "",
+      notes: mName.trim() ? `Train: ${mName.trim()}` : "",
+    });
+  };
 
   const handleSearch = async () => {
     if (!query.trim()) return;
@@ -252,17 +277,6 @@ export function TrainSearchPanel({ onFill, initialQuery = "", initialDate = "" }
     setResult(res.data);
   };
 
-  const handleManualFill = () => {
-    onFill({
-      title: searchType !== "pnr" ? query : "",
-      fromStation: "",
-      toStation: "",
-      bookingRef: searchType === "pnr" ? query : "",
-      date: date || "",
-      notes: searchType === "pnr" ? `PNR: ${query}` : "",
-    });
-  };
-
   const handleUse = async () => {
     if (!result) return;
     setResolving(true);
@@ -276,6 +290,8 @@ export function TrainSearchPanel({ onFill, initialQuery = "", initialDate = "" }
     ]);
     setResolving(false);
 
+    // For PNR we take the journey date + time straight from the ticket — the user
+    // never has to type them. Platform shows only if the provider returned one.
     onFill({
       title: result.trainNum
         ? `${result.trainName || ""}${result.trainNum ? " (" + result.trainNum + ")" : ""}`.trim()
@@ -287,6 +303,8 @@ export function TrainSearchPanel({ onFill, initialQuery = "", initialDate = "" }
       toLat:   toGeo?.lat   ?? null,
       toLng:   toGeo?.lng   ?? null,
       date: result.date || date || "",
+      time: result.departureTime || "",
+      endTime: result.arrivalTime || "",
       bookingRef: searchType === "pnr" ? query : "",
       notes: [
         result.trainNum  ? `Train: ${result.trainName} — ${result.trainNum}` : "",
@@ -295,6 +313,8 @@ export function TrainSearchPanel({ onFill, initialQuery = "", initialDate = "" }
         result.duration  ? `Duration: ${result.duration}` : "",
         result.departure ? `Departure: ${result.departure}` : "",
         result.arrival   ? `Arrival: ${result.arrival}`     : "",
+        result.platform  ? `Platform: ${result.platform}`   : "",
+        searchType === "pnr" ? `PNR: ${query}` : "",
       ].filter(Boolean).join("\n"),
     });
   };
@@ -316,6 +336,52 @@ export function TrainSearchPanel({ onFill, initialQuery = "", initialDate = "" }
         ))}
       </div>
 
+      {searchType === "manual" ? (
+        /* ── Manual entry: pick two stations (coords → track on the map) ── */
+        <div className="space-y-2.5">
+          <div>
+            <label className="text-[10px] font-bold text-amber-600 uppercase tracking-wider mb-1 block">From station</label>
+            <StationInput
+              value={mFrom?.label || ""}
+              onChange={() => setMFrom(null)}
+              onSelect={setMFrom}
+              placeholder="Search departure station…"
+              className="w-full text-sm border border-amber-200 focus:border-amber-400 outline-none px-2.5 py-1.5 rounded-lg bg-white text-zinc-700 placeholder-zinc-300"
+            />
+          </div>
+          <div>
+            <label className="text-[10px] font-bold text-amber-600 uppercase tracking-wider mb-1 block">To station</label>
+            <StationInput
+              value={mTo?.label || ""}
+              onChange={() => setMTo(null)}
+              onSelect={setMTo}
+              placeholder="Search arrival station…"
+              className="w-full text-sm border border-amber-200 focus:border-amber-400 outline-none px-2.5 py-1.5 rounded-lg bg-white text-zinc-700 placeholder-zinc-300"
+            />
+          </div>
+          <input value={mName} onChange={(e) => setMName(e.target.value)} maxLength={200}
+            placeholder="Train name / number (optional)"
+            className="w-full text-sm border border-amber-200 focus:border-amber-400 outline-none px-2.5 py-1.5 rounded-lg bg-white text-zinc-700 placeholder-zinc-300" />
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="text-[10px] font-bold text-amber-600 uppercase tracking-wider mb-1 block">Date (optional)</label>
+              <input type="date" value={mDate} onChange={(e) => setMDate(e.target.value)}
+                className="w-full text-xs border border-amber-200 focus:border-amber-400 outline-none px-2.5 py-1.5 rounded-lg bg-white text-zinc-700" />
+            </div>
+            <div>
+              <label className="text-[10px] font-bold text-amber-600 uppercase tracking-wider mb-1 block">Time (optional)</label>
+              <input type="time" value={mTime} onChange={(e) => setMTime(e.target.value)}
+                className="w-full text-xs border border-amber-200 focus:border-amber-400 outline-none px-2.5 py-1.5 rounded-lg bg-white text-zinc-700" />
+            </div>
+          </div>
+          <button onClick={addManual} disabled={!mFrom || !mTo}
+            className="w-full bg-amber-500 hover:bg-amber-600 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-medium py-2 rounded-xl transition-all">
+            Add train →
+          </button>
+          {(!mFrom || !mTo) && <p className="text-[11px] text-amber-600/80">Pick both stations to draw the track between them.</p>}
+        </div>
+      ) : (
+      <>
       <input value={query} onChange={(e) => setQuery(e.target.value)} onKeyDown={(e) => e.key === "Enter" && handleSearch()}
         placeholder={TYPES.find(t => t.id === searchType)?.placeholder}
         className="w-full text-sm border border-amber-200 focus:border-amber-400 outline-none px-2.5 py-1.5 rounded-lg bg-white text-zinc-700 placeholder-zinc-300" />
@@ -327,18 +393,17 @@ export function TrainSearchPanel({ onFill, initialQuery = "", initialDate = "" }
             className="w-full text-xs border border-amber-200 focus:border-amber-400 outline-none px-2.5 py-1.5 rounded-lg bg-white text-zinc-700" />
         </div>
       )}
+      {searchType === "pnr" && (
+        <p className="text-[11px] text-amber-600/90">Date, time & stations are pulled from the PNR — no need to enter them.</p>
+      )}
 
-      <div className="flex gap-2">
-        <button onClick={handleSearch} disabled={loading || !query.trim()}
-          className="flex-1 bg-amber-500 hover:bg-amber-600 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-medium py-2 rounded-xl transition-all flex items-center justify-center gap-2">
-          {loading && <div className="w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin" />}
-          {loading ? "Searching..." : "Look up"}
-        </button>
-        <button onClick={handleManualFill}
-          className="px-3 py-2 border border-amber-300 text-amber-700 text-xs font-semibold rounded-xl hover:bg-amber-100 transition-all">
-          Fill manually
-        </button>
-      </div>
+      <button onClick={handleSearch} disabled={loading || !query.trim()}
+        className="w-full bg-amber-500 hover:bg-amber-600 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-medium py-2 rounded-xl transition-all flex items-center justify-center gap-2">
+        {loading && <div className="w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin" />}
+        {loading ? "Searching..." : "Look up"}
+      </button>
+      </>
+      )}
 
       {error && (
         <div className="bg-red-50 border border-red-200 rounded-xl px-3 py-2.5">

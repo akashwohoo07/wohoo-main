@@ -6,6 +6,25 @@ Update this file whenever a feature is added, changed, or removed. Keep entries 
 
 ## Changelog
 
+### 2026-09-04 — Trains: manual station-to-station track + richer PNR auto-fill
+- **Station autocomplete (new, free):** `GET /api/transport/stations?q=` searches railway stations
+  via OpenStreetMap/Nominatim (no key), returns `{name, city, state, lat, lng, label}`, cached 24h
+  in Redis (fair-use), 6s timeout, graceful 502. New `StationInput` component mirrors `AirportInput`.
+- **Manual train entry now draws the track:** the train panel gained a **Manual** tab — pick a
+  *From* and *To* station (each carries coordinates), optional name/date/time → adds a transport leg
+  with `fromLat/Lng` + `toLat/Lng`, so the dashed train track renders on the map between the two
+  stations. Previously "Fill manually" saved only station *names* (no coords → no track).
+- **PNR auto-fill (no date asked):** `RAPIDAPI_KEY` is now set as a Fly secret so PNR works in prod.
+  The `/pnr` mapper is provider-shape-agnostic (`{data}` vs top-level) and now surfaces
+  date, departure/arrival **time**, boarding/destination stations, class and **platform *only when
+  the provider returns it*** (railways assign platforms near departure; not part of PNR). The client
+  fills date/time/stations straight from the ticket — the date field is hidden in PNR mode.
+- **Tests**: backend `transport.test.js` (7: stations auth/short-circuit/mapping/502, PNR no-key/
+  full-map/platform-omitted); frontend `TrainSearch.test.jsx` (2: manual add carries both station
+  coords, PNR fill takes date+time and lists platform). Backend 287 green, client 43 green.
+- **Note:** the on-map train line is a straight dashed segment between the two stations (free); an
+  actual rail-following route would need a paid railway-routing API.
+
 ### 2026-09-04 — Expenses & splits: edit expenses + money stays reconciled
 - **Edit an expense (frontend):** the backend `PUT /trips/:tripId/expenses/:id` existed but the UI
   only let you add/delete. The expense modal now doubles as an **edit** modal — pre-fills title,
