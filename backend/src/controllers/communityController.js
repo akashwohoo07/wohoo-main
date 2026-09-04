@@ -418,6 +418,63 @@ export const leaveCommunity = async (req, res, next) => {
   }
 };
 
+// ── UPDATE SETTINGS (owner/admin) ─────────────────────────────
+// Owner & admins can edit name/description/avatar/cover. Only the OWNER can
+// flip privacy (public↔private), since that's an ownership-level decision.
+// Fields are whitelisted (never spread req.body). The slug stays stable on
+// rename so existing links/handles don't break.
+export const updateCommunity = async (req, res, next) => {
+  try {
+    const community = await Community.findById(req.params.id);
+    if (!community) return res.status(404).json({ success: false, message: "Community not found" });
+
+    const membership = await getMembership(community._id, req.user._id);
+    const isOwner = community.owner.toString() === req.user._id.toString();
+    const canManage = isOwner || membership?.role === "admin";
+    if (!canManage) {
+      return res.status(403).json({ success: false, message: "Only the owner or an admin can edit settings" });
+    }
+
+    const updates = {};
+    if (typeof req.body.name === "string") {
+      const name = req.body.name.trim();
+      if (!name) return res.status(400).json({ success: false, message: "Name can't be empty" });
+      updates.name = name.slice(0, 80);
+    }
+    if (typeof req.body.description === "string") {
+      updates.description = req.body.description.trim().slice(0, 500);
+    }
+    if (typeof req.body.avatar === "string") updates.avatar = req.body.avatar.trim();
+    if (typeof req.body.cover === "string") updates.cover = req.body.cover.trim();
+    if (req.body.type !== undefined) {
+      if (!["public", "private"].includes(req.body.type)) {
+        return res.status(400).json({ success: false, message: "Type must be public or private" });
+      }
+      if (!isOwner) {
+        return res.status(403).json({ success: false, message: "Only the owner can change privacy" });
+      }
+      updates.type = req.body.type;
+    }
+
+    if (Object.keys(updates).length === 0) {
+      return res.status(400).json({ success: false, message: "No changes provided" });
+    }
+
+    const typeChanged = updates.type && updates.type !== community.type;
+    Object.assign(community, updates);
+    await community.save();
+
+    // Let members see notable changes in the chat feed (non-blocking).
+    if (typeChanged) {
+      postSystemMessage(community._id, req.user._id, `${handle(req.user)} made the community ${updates.type}`).catch(() => {});
+    }
+
+    res.json({ success: true, community: serializeCommunity(community, membership) });
+  } catch (err) {
+    next(err);
+  }
+};
+
 // ── DELETE (owner only) ───────────────────────────────────────
 export const deleteCommunity = async (req, res, next) => {
   const session = await mongoose.startSession();

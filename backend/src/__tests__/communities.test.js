@@ -278,4 +278,53 @@ describe("Communities API", () => {
       expect(await CommunityMember.countDocuments({ community: pub._id })).toBe(0);
     });
   });
+
+  describe("update settings (PATCH /:id)", () => {
+    let comm;
+    beforeEach(async () => { comm = await createCommunityAs(owner.token, { name: "Trekkers", description: "old" }); });
+    const patch = (t, body) => request(app).patch(`/api/communities/${comm._id}`).set(auth(t)).send(body);
+
+    it("owner edits name + description; slug stays stable", async () => {
+      const res = await patch(owner.token, { name: "Himalayan Trekkers", description: "new desc" });
+      expect(res.status).toBe(200);
+      expect(res.body.community.name).toBe("Himalayan Trekkers");
+      expect(res.body.community.description).toBe("new desc");
+      const saved = await Community.findById(comm._id);
+      expect(saved.name).toBe("Himalayan Trekkers");
+      expect(saved.slug).toBe(comm.slug); // unchanged
+    });
+
+    it("owner flips privacy public↔private", async () => {
+      expect((await patch(owner.token, { type: "private" })).body.community.type).toBe("private");
+      expect((await patch(owner.token, { type: "public" })).body.community.type).toBe("public");
+    });
+
+    it("400 on empty name or invalid type", async () => {
+      expect((await patch(owner.token, { name: "   " })).status).toBe(400);
+      expect((await patch(owner.token, { type: "secret" })).status).toBe(400);
+      expect((await patch(owner.token, {})).status).toBe(400); // no changes
+    });
+
+    it("an admin can edit description but NOT change privacy", async () => {
+      const admin = await createAuthUser({ username: uname() });
+      await CommunityMember.create({ community: comm._id, user: admin.user._id, role: "admin" });
+      expect((await patch(admin.token, { description: "by admin" })).status).toBe(200);
+      expect((await patch(admin.token, { type: "private" })).status).toBe(403);
+    });
+
+    it("a plain member and a non-member cannot edit (403)", async () => {
+      const member = await createAuthUser({ username: uname() });
+      await CommunityMember.create({ community: comm._id, user: member.user._id, role: "member" });
+      expect((await patch(member.token, { name: "hack" })).status).toBe(403);
+
+      const stranger = await createAuthUser({ username: uname() });
+      expect((await patch(stranger.token, { name: "hack" })).status).toBe(403);
+    });
+
+    it("requires auth (401) and 404s for unknown community", async () => {
+      expect((await request(app).patch(`/api/communities/${comm._id}`).send({ name: "x" })).status).toBe(401);
+      const ghost = "6a9adefe116fa4d4b9ed0493";
+      expect((await patch(owner.token, { name: "x" }).then(() => request(app).patch(`/api/communities/${ghost}`).set(auth(owner.token)).send({ name: "x" }))).status).toBe(404);
+    });
+  });
 });

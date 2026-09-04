@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
-  ArrowLeft, Hash, Lock, Send, Users, Loader2, MapPin, Plane, X, Check, Trash2, LogOut, Calendar, Plus, UserMinus, UserRound, Ban, Search,
+  ArrowLeft, Hash, Lock, Send, Users, Loader2, MapPin, Plane, X, Check, Trash2, LogOut, Calendar, Plus, UserMinus, UserRound, Ban, Search, Settings, Globe,
 } from "lucide-react";
 import api from "../api/axios";
 import { useAuth } from "../context/AuthContext";
@@ -145,6 +145,90 @@ function MembersPanel({ community, members, requests, canManage, onRespond, onCl
   );
 }
 
+// Community settings — edit name/description/avatar/cover, and (owner only)
+// flip public↔private. Mirrors the server's authorization.
+function SettingsModal({ community, isOwner, onClose, onSaved }) {
+  const [name, setName] = useState(community.name || "");
+  const [description, setDescription] = useState(community.description || "");
+  const [type, setType] = useState(community.type || "public");
+  const [avatar, setAvatar] = useState(community.avatar || "");
+  const [cover, setCover] = useState(community.cover || "");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  const dirty =
+    name.trim() !== (community.name || "") ||
+    description !== (community.description || "") ||
+    (isOwner && type !== community.type) ||
+    avatar !== (community.avatar || "") ||
+    cover !== (community.cover || "");
+
+  const save = async () => {
+    if (!name.trim()) { setError("Name can't be empty"); return; }
+    setSaving(true); setError("");
+    try {
+      const body = { name: name.trim(), description, avatar, cover };
+      if (isOwner) body.type = type;
+      const { data } = await api.patch(`/communities/${community._id}`, body);
+      onSaved(data.community);
+    } catch (err) {
+      setError(err.response?.data?.message || "Could not save settings");
+    } finally { setSaving(false); }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 sm:px-4" onClick={onClose}>
+      <div className="bg-white w-full sm:max-w-md sm:rounded-2xl rounded-t-2xl p-6 shadow-2xl max-h-[92vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between mb-5">
+          <h3 className="font-semibold text-zinc-900 inline-flex items-center gap-2"><Settings className="w-4 h-4 text-zinc-400" /> Community settings</h3>
+          <button onClick={onClose} aria-label="Close" className="text-zinc-400 hover:text-zinc-600"><X className="w-5 h-5" /></button>
+        </div>
+
+        <label className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-1.5 block">Name</label>
+        <input value={name} onChange={(e) => setName(e.target.value)} maxLength={80}
+          className="w-full border border-zinc-200 rounded-xl px-3 py-2.5 text-sm text-zinc-800 outline-none focus:border-rose-400 mb-4" />
+
+        <label className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-1.5 block">Description</label>
+        <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={3} maxLength={500}
+          placeholder="What's this community about?"
+          className="w-full border border-zinc-200 rounded-xl px-3 py-2.5 text-sm text-zinc-700 outline-none focus:border-rose-400 resize-none mb-1" />
+        <p className="text-[11px] text-zinc-400 text-right mb-4">{description.length}/500</p>
+
+        {/* Privacy — owner only */}
+        <label className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-1.5 block">Privacy</label>
+        <div className="grid grid-cols-2 gap-2 mb-1">
+          {[
+            { id: "public", Icon: Globe, label: "Public", desc: "Anyone can join" },
+            { id: "private", Icon: Lock, label: "Private", desc: "Approval required" },
+          ].map((o) => (
+            <button key={o.id} type="button" disabled={!isOwner} onClick={() => setType(o.id)}
+              className={`text-left px-3 py-2.5 rounded-xl border transition-all ${type === o.id ? "bg-rose-50 border-rose-300 text-rose-600" : "border-zinc-200 text-zinc-500 hover:border-zinc-300"} ${!isOwner ? "opacity-60 cursor-not-allowed" : ""}`}>
+              <div className="flex items-center gap-1.5 text-sm font-medium"><o.Icon className="w-4 h-4" /> {o.label}</div>
+              <div className="text-[11px] text-zinc-400 mt-0.5">{o.desc}</div>
+            </button>
+          ))}
+        </div>
+        <p className="text-[11px] text-zinc-400 mb-4">{isOwner ? "Only you (the owner) can change privacy." : "Only the owner can change privacy."}</p>
+
+        <label className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-1.5 block">Avatar URL <span className="text-zinc-300 normal-case font-normal">· optional</span></label>
+        <input value={avatar} onChange={(e) => setAvatar(e.target.value)} placeholder="https://…"
+          className="w-full border border-zinc-200 rounded-xl px-3 py-2.5 text-sm text-zinc-800 outline-none focus:border-rose-400 mb-4" />
+
+        <label className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-1.5 block">Cover URL <span className="text-zinc-300 normal-case font-normal">· optional</span></label>
+        <input value={cover} onChange={(e) => setCover(e.target.value)} placeholder="https://…"
+          className="w-full border border-zinc-200 rounded-xl px-3 py-2.5 text-sm text-zinc-800 outline-none focus:border-rose-400 mb-5" />
+
+        {error && <p className="text-sm text-rose-500 mb-3">{error}</p>}
+
+        <button onClick={save} disabled={saving || !dirty || !name.trim()}
+          className="w-full bg-rose-500 hover:bg-rose-600 disabled:opacity-40 disabled:cursor-not-allowed text-white font-medium py-3 rounded-full transition-all text-sm inline-flex items-center justify-center gap-2">
+          {saving && <Loader2 className="w-4 h-4 animate-spin" />} Save changes
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // Tapping a member's avatar in chat opens this sheet: view profile, and (owner
 // only) remove them from the community.
 function MemberActionSheet({ user, canRemove, onRemove, onClose, navigate }) {
@@ -229,6 +313,7 @@ export default function CommunityDetail() {
   const [members, setMembers] = useState([]);
   const [requests, setRequests] = useState([]);
   const [showMembers, setShowMembers] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   const [showTripPicker, setShowTripPicker] = useState(false);
   const [actionUser, setActionUser] = useState(null); // user whose avatar was tapped in chat
   const [confirmRemove, setConfirmRemove] = useState(null); // user pending removal confirmation
@@ -509,6 +594,9 @@ export default function CommunityDetail() {
           <div className="ml-auto flex items-center gap-0.5">
             <button onClick={() => setSearchOpen(true)} className="p-2 rounded-full hover:bg-zinc-100 text-zinc-500" title="Search messages"><Search className="w-5 h-5" /></button>
             <button onClick={() => setShowMembers(true)} className="p-2 rounded-full hover:bg-zinc-100 text-zinc-500" title="Members"><Users className="w-5 h-5" /></button>
+            {canManage && (
+              <button onClick={() => setShowSettings(true)} className="p-2 rounded-full hover:bg-zinc-100 text-zinc-500" title="Community settings"><Settings className="w-5 h-5" /></button>
+            )}
           </div>
         )}
       </header>
@@ -649,6 +737,14 @@ export default function CommunityDetail() {
         <MembersPanel community={community} members={members} requests={requests} canManage={canManage}
           onRespond={respondRequest} onClose={() => setShowMembers(false)} onLeave={leave} onDelete={del}
           onRemove={askRemove} isOwner={isOwner} myId={myId} />
+      )}
+      {showSettings && (
+        <SettingsModal
+          community={community}
+          isOwner={isOwner}
+          onClose={() => setShowSettings(false)}
+          onSaved={(updated) => { setCommunity((c) => ({ ...c, ...updated })); setShowSettings(false); }}
+        />
       )}
       {searchOpen && (
         <div className="fixed inset-0 z-50 bg-white flex flex-col">

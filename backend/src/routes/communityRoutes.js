@@ -5,6 +5,7 @@ import {
   searchCommunities,
   getMyCommunities,
   getCommunity,
+  updateCommunity,
   joinCommunity,
   requestToJoin,
   listRequests,
@@ -44,6 +45,7 @@ router.post("/:id/requests/:reqId/respond", respondToRequest);
 router.post("/:id/leave", leaveCommunity);
 
 router.get("/:id", getCommunity);
+router.patch("/:id", updateCommunity);
 router.delete("/:id", deleteCommunity);
 
 export default router;

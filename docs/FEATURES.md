@@ -6,6 +6,19 @@ Update this file whenever a feature is added, changed, or removed. Keep entries 
 
 ## Changelog
 
+### 2026-09-05 — Community settings (edit name/description, privacy, avatar/cover)
+- New **`PATCH /api/communities/:id`** (`updateCommunity`) — the first way to edit a community
+  after creation. Owner & admins can change **name, description, avatar, cover**; **only the owner**
+  can flip **privacy (public↔private)** since that's an ownership-level decision. Fields are
+  whitelisted (never spread `req.body`); the **slug stays stable** on rename so links don't break.
+  A privacy change posts a system message to the chat feed so members see it.
+- **Frontend:** a **Settings** gear appears in the community header for owners/admins → a settings
+  modal to edit name, description (with counter), privacy (Public/Globe vs Private/Lock, disabled
+  for non-owners), and avatar/cover URLs. Saves via PATCH and updates in place.
+- **Tests**: backend `communities.test.js` (+6) — owner edits name/description (slug stable),
+  owner flips privacy, admin can edit description but not privacy (403), member/non-member/unauth
+  blocked, 400 on empty name / bad type / no-op, 404 unknown. Backend 297 green.
+
 ### 2026-09-05 — Stay logged in "forever" (secure sliding sessions)
 - Users now stay logged in until they **manually log out** (Instagram-style), instead of being
   dropped after 14 days. The refresh session lifetime went from **14 days → 365 days**
