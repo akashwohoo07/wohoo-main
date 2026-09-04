@@ -502,8 +502,10 @@ export default function WohooHome() {
           </div>
           <div style={{ height:1, background:"rgba(17,17,16,.07)", marginBottom:48 }} />
 
-          <div style={{ display:"grid", gridTemplateColumns: isMob ? "1fr 1fr" : "repeat(3,1fr)", gap: isMob?12:20 }}>
-            {INDIA_DESTINATIONS.map((d,i)=><DestCard key={d.name} d={d} i={i} isMob={isMob} />)}
+          {/* Responsive auto-fill grid: tiles stay a comfortable size and reflow
+              at every width. Shorter 4/3 (landscape) cards so photos aren't huge. */}
+          <div style={{ display:"grid", gridTemplateColumns: isMob ? "repeat(2,1fr)" : "repeat(auto-fill,minmax(240px,1fr))", gap: isMob?10:16 }}>
+            {INDIA_DESTINATIONS.map((d,i)=><DestCard key={d.name} d={d} i={i} isMob={isMob} aspect={isMob ? "1/1" : "4/3"} />)}
           </div>
         </div>
       </section>
@@ -948,7 +950,7 @@ export default function WohooHome() {
 /* ══════════════════════════════════════════════════
    DESTINATION CARD
 ══════════════════════════════════════════════════ */
-function DestCard({ d, i, isMob }) {
+function DestCard({ d, i, isMob, aspect }) {
   const ref = useRef(null);
   const [vis, setVis] = useState(false);
   const [hov, setHov] = useState(false);
@@ -960,7 +962,7 @@ function DestCard({ d, i, isMob }) {
   return (
     <div ref={ref} style={{
       borderRadius:16, overflow:"hidden", position:"relative",
-      aspectRatio: isMob?"2/3":"3/4",
+      aspectRatio: aspect || (isMob?"2/3":"3/4"),
       background:"#eee", cursor:"pointer",
       opacity: vis?1:0, transform: vis?"translateY(0)":"translateY(40px)",
       transition:`opacity .75s ease ${i*.08}s,transform .75s cubic-bezier(.16,1,.3,1) ${i*.08}s,box-shadow .4s`,
