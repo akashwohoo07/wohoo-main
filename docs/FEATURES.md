@@ -6,6 +6,21 @@ Update this file whenever a feature is added, changed, or removed. Keep entries 
 
 ## Changelog
 
+### 2026-09-04 — Discover + Wishlist UI (frontend)
+- New **`/discover`** page: searches public trips (debounced `q`), responsive card grid with
+  owner attribution, member count, and dates. Each card has a **heart** to save/unsave to the
+  wishlist (optimistic, reverts on error); already-saved trips show a filled heart on load
+  (`/discover/wishlist/keys`). "Load more" paginates via cursor.
+- New **`/wishlist`** page: grid of saved items with kind-filter chips (All/Trips/Places/Eats/
+  Hotels/Stays/Activities/Sights), rating, remove (optimistic), and an empty state that CTAs to
+  Discover. Trip items deep-link to the trip.
+- Extracted the top nav into a shared **`TopNav`** component (previously inline in Dashboard) so
+  Trips/Discover/Wishlist/Community tabs are consistent and now actually navigate (the Discover
+  and Wishlist tabs were previously dead buttons). Both routes are `ProtectedRoute`-gated.
+- **Tests**: `Discover.test.jsx` (5) + `Wishlist.test.jsx` (4) — render from API, heart
+  save→POST + optimistic flip, pre-filled hearts, debounced `q` search, kind filter, optimistic
+  remove→DELETE, empty states.
+
 ### 2026-09-04 — Discover public trips + personal Wishlist (backend)
 - New **discover** module (`discoverController` + `discoverRoutes`, mounted at `/api/discover`,
   all routes `protect`-gated).

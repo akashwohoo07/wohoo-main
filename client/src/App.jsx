@@ -19,6 +19,8 @@ import { lazy, Suspense } from "react";
 const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
 import Communities from "./pages/Communities";
 import CommunityDetail from "./pages/CommunityDetail";
+import Discover from "./pages/Discover";
+import Wishlist from "./pages/Wishlist";
 import HomePage from "./pages/HomePage"; // ← added
 
 // First-party pageview beacon on every route change (SPA-aware). Anonymous-safe.
@@ -60,6 +62,8 @@ export default function App() {
           <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
           <Route path="/communities" element={<ProtectedRoute><Communities /></ProtectedRoute>} />
           <Route path="/communities/:id" element={<ProtectedRoute><CommunityDetail /></ProtectedRoute>} />
+          <Route path="/discover" element={<ProtectedRoute><Discover /></ProtectedRoute>} />
+          <Route path="/wishlist" element={<ProtectedRoute><Wishlist /></ProtectedRoute>} />
           <Route path={`/${ADMIN_PATH}`} element={<AdminRoute><Suspense fallback={<div className="flex items-center justify-center h-screen text-zinc-400">Loading…</div>}><AdminDashboard /></Suspense></AdminRoute>} />
         </Routes>
       </AuthProvider>
