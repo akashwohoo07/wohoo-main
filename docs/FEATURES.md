@@ -6,6 +6,28 @@ Update this file whenever a feature is added, changed, or removed. Keep entries 
 
 ## Changelog
 
+### 2026-09-05 — Profile picture & cover uploads (Cloudflare R2, direct-to-storage)
+- Users can upload a **profile photo** and a **cover banner** from **Settings** (camera buttons on
+  the avatar + cover; remove buttons too). Cover shows on the public profile behind the avatar.
+- **Scalable, safe design:** the browser uploads the file **directly to Cloudflare R2** via a
+  short-lived **presigned URL** — bytes never pass through the API server, so many concurrent
+  uploads don't bottleneck it, and R2 stores durably (no data loss). Flow: `POST /uploads/presign`
+  (validates kind + image content-type, mints a 120s signed PUT under the caller's own key prefix)
+  → browser PUTs to R2 (XHR, no cookies) → `POST /uploads/confirm` (backend HEADs the object,
+  enforces **type + size caps** — 5 MB avatar / 10 MB cover — then saves the URL; deletes the
+  replaced image). `DELETE /uploads/:kind` clears it.
+- **Security:** server-generated keys (a user can only write/confirm under `avatars/<id>/` or
+  `covers/<id>/`), content-type whitelist (jpeg/png/webp) bound into the signature, size enforced
+  server-side, upload rate-limited, R2 creds never exposed. Feature is env-gated (`R2_*`) → returns
+  503 until configured, so nothing else is affected.
+- **Why R2:** zero egress fees + served via Cloudflare's CDN (same network as the site) → the
+  cheapest option at scale; S3-compatible via `@aws-sdk/client-s3`.
+- `User.cover` added. **Tests**: `uploads.test.js` (8) — auth, presign validation, confirm authz
+  (can't claim others' keys), size/type rejection + cleanup, remove. Backend 306 green.
+- **Setup required (Cloudflare):** create an R2 bucket, a public domain (e.g. `cdn.wohoo.in`), and
+  an API token; set `R2_ACCOUNT_ID/R2_ACCESS_KEY_ID/R2_SECRET_ACCESS_KEY/R2_BUCKET/R2_PUBLIC_URL`
+  as Fly secrets. See `backend/.env.example`.
+
 ### 2026-09-05 — Public communities: preview the chat + Join button
 - A logged-in user visiting a **public** community they haven't joined can now **read the chat**
   (preview before joining). `listMessages` allows reads when the community is public OR the caller

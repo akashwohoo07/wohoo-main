@@ -292,10 +292,15 @@ export default function UserProfile() {
         <div className="w-16" />
       </nav>
 
-      <main className="max-w-3xl mx-auto px-4 sm:px-8 py-8 sm:py-12">
-        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between mb-8 gap-4">
-          <div className="flex items-center gap-4 sm:gap-5">
-            <div className="w-20 h-20 rounded-full bg-rose-200 flex items-center justify-center overflow-hidden flex-shrink-0 ring-4 ring-rose-100">
+      {/* Cover banner */}
+      <div className="h-36 sm:h-48 w-full bg-gradient-to-br from-rose-100 via-zinc-100 to-blue-100 overflow-hidden">
+        {profile?.cover && <img src={profile.cover} alt="" className="w-full h-full object-cover" />}
+      </div>
+
+      <main className="max-w-3xl mx-auto px-4 sm:px-8 pb-8 sm:pb-12 -mt-12 relative">
+        <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between mb-8 gap-4">
+          <div className="flex items-end gap-4 sm:gap-5">
+            <div className="w-24 h-24 rounded-full bg-rose-200 flex items-center justify-center overflow-hidden flex-shrink-0 ring-4 ring-white">
               {profile?.avatar
                 ? <img src={profile.avatar} className="w-full h-full object-cover" alt={profile.name} />
                 : <span className="text-2xl font-bold text-rose-600">{initials(profile?.name)}</span>

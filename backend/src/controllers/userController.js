@@ -90,7 +90,7 @@ export const getUserProfile = async (req, res, next) => {
       let cached = await cacheGet(cacheKey);
       if (!cached) {
         const profileUser = await User.findOne({ username })
-          .select("name username avatar createdAt followersCount followingCount")
+          .select("name username avatar cover createdAt followersCount followingCount")
           .read(analyticsReadPreference())
           .lean();
 

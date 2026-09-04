@@ -18,6 +18,7 @@ const userSchema = new mongoose.Schema(
     usernameSetAt: Date,
     googleId: { type: String, unique: true, sparse: true, index: true },
     avatar: String,
+    cover: String, // profile cover/banner image (uploaded to R2)
     isVerified: { type: Boolean, default: false },
     refreshToken: { type: String, select: false },
     // ✅ Denormalized counts — O(1) reads, updated atomically

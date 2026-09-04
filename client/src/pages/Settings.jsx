@@ -1,6 +1,9 @@
+import { useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, AtSign, Mail, ChevronRight, User as UserIcon } from "lucide-react";
+import { ArrowLeft, AtSign, Mail, ChevronRight, User as UserIcon, Camera, Loader2, Trash2 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
+import api from "../api/axios";
+import { uploadImage } from "../lib/uploadImage";
 
 // A settings row. Clickable rows get a chevron; static rows just show a value.
 function Row({ icon: Icon, label, value, hint, onClick, action }) {
@@ -25,7 +28,37 @@ function Row({ icon: Icon, label, value, hint, onClick, action }) {
 
 export default function Settings() {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, setUser } = useAuth();
+
+  const avatarInput = useRef(null);
+  const coverInput = useRef(null);
+  const [busy, setBusy] = useState(null); // "avatar" | "cover" | null
+  const [error, setError] = useState("");
+
+  const pick = async (kind, file) => {
+    if (!file) return;
+    setError(""); setBusy(kind);
+    try {
+      const url = await uploadImage(file, kind);
+      setUser((u) => ({ ...u, [kind]: url }));
+    } catch (err) {
+      setError(err.response?.data?.message || err.message || "Upload failed");
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const removeImage = async (kind) => {
+    setError(""); setBusy(kind);
+    try {
+      await api.delete(`/uploads/${kind}`);
+      setUser((u) => ({ ...u, [kind]: "" }));
+    } catch (err) {
+      setError(err.response?.data?.message || "Could not remove image");
+    } finally {
+      setBusy(null);
+    }
+  };
 
   return (
     <div className="min-h-[100dvh] bg-zinc-50">
@@ -37,15 +70,49 @@ export default function Settings() {
       </header>
 
       <main className="max-w-2xl mx-auto px-4 py-6 space-y-6">
-        {/* Identity card */}
-        <div className="flex items-center gap-4 bg-white border border-zinc-100 rounded-2xl p-4">
-          <div className="w-14 h-14 rounded-full overflow-hidden bg-rose-100 flex items-center justify-center flex-shrink-0">
-            {user?.avatar ? <img src={user.avatar} alt="" className="w-full h-full object-cover" /> : <span className="text-lg font-bold text-rose-600">{(user?.name || "?").charAt(0).toUpperCase()}</span>}
+        {/* Profile card — cover banner + avatar with upload controls */}
+        <div className="bg-white border border-zinc-100 rounded-2xl overflow-hidden">
+          {/* Cover */}
+          <div className="relative h-28 sm:h-32 bg-gradient-to-br from-rose-100 via-zinc-100 to-blue-100">
+            {user?.cover && <img src={user.cover} alt="" className="w-full h-full object-cover" />}
+            <div className="absolute top-2 right-2 flex gap-1.5">
+              {user?.cover && (
+                <button onClick={() => removeImage("cover")} disabled={busy} title="Remove cover"
+                  className="w-8 h-8 rounded-full bg-black/40 backdrop-blur text-white flex items-center justify-center hover:bg-black/55 disabled:opacity-50">
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              )}
+              <button onClick={() => coverInput.current?.click()} disabled={busy} title="Change cover"
+                className="w-8 h-8 rounded-full bg-black/40 backdrop-blur text-white flex items-center justify-center hover:bg-black/55 disabled:opacity-50">
+                {busy === "cover" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Camera className="w-4 h-4" />}
+              </button>
+            </div>
           </div>
-          <div className="min-w-0">
-            <p className="text-base font-semibold text-zinc-900 truncate">{user?.name}</p>
-            <p className="text-sm text-zinc-400 truncate">{user?.username ? `@${user.username}` : "No username yet"}</p>
+
+          {/* Avatar + name */}
+          <div className="px-4 pb-4 -mt-9 flex items-end gap-3">
+            <div className="relative flex-shrink-0">
+              <div className="w-20 h-20 rounded-full ring-4 ring-white overflow-hidden bg-rose-100 flex items-center justify-center">
+                {user?.avatar ? <img src={user.avatar} alt="" className="w-full h-full object-cover" /> : <span className="text-2xl font-bold text-rose-600">{(user?.name || "?").charAt(0).toUpperCase()}</span>}
+              </div>
+              <button onClick={() => avatarInput.current?.click()} disabled={busy} title="Change photo"
+                className="absolute -bottom-0.5 -right-0.5 w-7 h-7 rounded-full bg-rose-500 text-white flex items-center justify-center ring-2 ring-white hover:bg-rose-600 disabled:opacity-50">
+                {busy === "avatar" ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Camera className="w-3.5 h-3.5" />}
+              </button>
+            </div>
+            <div className="min-w-0 pb-1">
+              <p className="text-base font-semibold text-zinc-900 truncate">{user?.name}</p>
+              <p className="text-sm text-zinc-400 truncate">{user?.username ? `@${user.username}` : "No username yet"}</p>
+            </div>
           </div>
+
+          {error && <p className="text-sm text-rose-500 px-4 pb-3 -mt-1">{error}</p>}
+
+          {/* Hidden file inputs */}
+          <input ref={avatarInput} type="file" accept="image/jpeg,image/png,image/webp" hidden
+            onChange={(e) => { pick("avatar", e.target.files?.[0]); e.target.value = ""; }} />
+          <input ref={coverInput} type="file" accept="image/jpeg,image/png,image/webp" hidden
+            onChange={(e) => { pick("cover", e.target.files?.[0]); e.target.value = ""; }} />
         </div>
 
         {/* Account */}

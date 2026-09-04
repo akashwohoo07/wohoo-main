@@ -18,3 +18,12 @@ export const globalLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
 });
+
+// Tighter cap on image-upload signing (each call mints a direct-to-R2 URL).
+export const uploadLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: isProd ? 20 : 1000,
+  message: { success: false, message: "Too many uploads. Please slow down." },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
