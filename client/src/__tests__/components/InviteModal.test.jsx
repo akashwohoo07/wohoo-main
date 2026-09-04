@@ -8,6 +8,8 @@ vi.mock("../../api/axios", () => ({
   default: {
     post: vi.fn(),
     get: vi.fn().mockResolvedValue({ data: { users: [] } }),
+    patch: vi.fn().mockResolvedValue({ data: { success: true } }),
+    delete: vi.fn().mockResolvedValue({ data: { success: true } }),
   },
 }));
 
@@ -107,5 +109,49 @@ describe("InviteModal", () => {
         role: "editor",
       });
     });
+  });
+
+  it("explains what each role can do (Viewer can chat, Editor can edit)", () => {
+    render(<InviteModal {...defaultProps} />);
+    expect(screen.getByText(/can't edit the plan/i)).toBeInTheDocument();          // viewer
+    expect(screen.getByText(/only the owner changes roles/i)).toBeInTheDocument(); // editor
+  });
+
+  // Route /collaborators to a fixed roster; everything else (user search) stays empty.
+  const withRoster = (members, myRole = "owner") =>
+    api.get.mockImplementation((url) =>
+      url.includes("/collaborators")
+        ? Promise.resolve({ data: { members, invites: [], myRole } })
+        : Promise.resolve({ data: { users: [] } }));
+
+  it("owner changes a member's role optimistically and PATCHes the API", async () => {
+    withRoster([
+      { user: { _id: "owner1", name: "Me", username: "me" }, role: "owner", isOwner: true },
+      { user: { _id: "u2", name: "Bob", username: "bob" }, role: "viewer" },
+    ]);
+    render(<InviteModal {...defaultProps} />);
+
+    const select = await screen.findByRole("combobox");
+    expect(select.value).toBe("viewer");
+    fireEvent.change(select, { target: { value: "editor" } });
+
+    // Optimistic: reflects immediately.
+    expect(select.value).toBe("editor");
+    await waitFor(() =>
+      expect(api.patch).toHaveBeenCalledWith("/trips/trip-123/members/u2", { role: "editor" })
+    );
+  });
+
+  it("a non-owner sees roles as read-only (no select, no remove)", async () => {
+    withRoster(
+      [
+        { user: { _id: "owner1", name: "Amy" }, role: "owner", isOwner: true },
+        { user: { _id: "me", name: "Me" }, role: "editor" },
+      ],
+      "editor"
+    );
+    render(<InviteModal {...defaultProps} />);
+    await screen.findByText("Amy");
+    expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
   });
 });

@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Hand, Eye, Pencil, Sparkles } from "lucide-react";
 import api from "../api/axios";
 import UserSearchSelect from "../components/UserSearchSelect";
+import { ROLE_META } from "../lib/roles";
 
 const STEPS = ["destination", "name", "dates", "invite", "confirm"];
 const TODAY = new Date().toISOString().split("T")[0];
@@ -203,6 +204,11 @@ export default function CreateTrip() {
   };
 
   const removeInvitee = (key) => setInvitees((prev) => prev.filter((i) => i.key !== key));
+
+  // Instantly change an already-added invitee's role — it's all local state
+  // until the trip is created, so a mis-set role is trivially fixed.
+  const setInviteeRole = (key, role) =>
+    setInvitees((prev) => prev.map((i) => (i.key === key ? { ...i, role } : i)));
 
   const handleSubmit = async () => {
     setLoading(true);
@@ -405,13 +411,15 @@ export default function CreateTrip() {
               <h2 className="text-3xl sm:text-4xl font-serif text-zinc-900 mb-8 leading-tight">Invite your friends to collaborate!</h2>
 
               {/* Access level (applies to whoever you add next) */}
-              <div className="flex gap-2 mb-4">
+              <div className="flex gap-2 mb-2">
                 {["viewer", "editor"].map((r) => (
                   <button key={r} onClick={() => setInviteRole(r)} className={`text-xs px-3 py-1.5 rounded-full border transition-all inline-flex items-center gap-1.5 ${inviteRole === r ? "bg-rose-50 border-rose-300 text-rose-600" : "border-zinc-200 text-zinc-400 hover:border-zinc-300"}`}>
                     {r === "viewer" ? <><Eye className="w-3.5 h-3.5" /> Can view</> : <><Pencil className="w-3.5 h-3.5" /> Can edit</>}
                   </button>
                 ))}
               </div>
+              {/* Explain what the selected default role can do. */}
+              <p className="text-xs text-zinc-400 mb-4">{ROLE_META[inviteRole].can} You can change each person's role below.</p>
 
               {/* Search people by username */}
               <UserSearchSelect
@@ -446,9 +454,24 @@ export default function CreateTrip() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm text-zinc-700 truncate">{inv.name || label}</p>
-                      <p className="text-xs text-zinc-400 capitalize truncate">{inv.name ? `${label} · ${inv.role}` : inv.role}</p>
+                      {inv.name && <p className="text-xs text-zinc-400 truncate">{label}</p>}
                     </div>
-                    <button onClick={() => removeInvitee(inv.key)} className="text-zinc-300 hover:text-rose-400 transition-colors">
+                    {/* Instant per-person role toggle */}
+                    <div className="flex items-center rounded-full border border-zinc-200 overflow-hidden text-[11px] flex-shrink-0" role="group" aria-label={`Role for ${inv.name || label}`}>
+                      {["viewer", "editor"].map((r) => (
+                        <button
+                          key={r}
+                          onClick={() => setInviteeRole(inv.key, r)}
+                          aria-pressed={inv.role === r}
+                          title={ROLE_META[r].can}
+                          className={`px-2.5 py-1 inline-flex items-center gap-1 transition-colors ${inv.role === r ? "bg-rose-50 text-rose-600 font-medium" : "text-zinc-400 hover:text-zinc-600"}`}
+                        >
+                          {r === "viewer" ? <Eye className="w-3 h-3" /> : <Pencil className="w-3 h-3" />}
+                          {r === "viewer" ? "View" : "Edit"}
+                        </button>
+                      ))}
+                    </div>
+                    <button onClick={() => removeInvitee(inv.key)} title="Remove" className="text-zinc-300 hover:text-rose-400 transition-colors flex-shrink-0">
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                       </svg>

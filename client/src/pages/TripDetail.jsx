@@ -12,6 +12,7 @@ import SplitTab from "./trip/SplitTab";
 import ShareToCommunityModal from "../components/ShareToCommunityModal";
 import TripChatTab from "./trip/TripChatTab";
 import { KIND_ICON, iconSvg } from "../lib/icons.jsx";
+import { ROLE_META, roleLabel } from "../lib/roles";
 
 // ── Skeleton ──────────────────────────────────────────────────
 function Skeleton({ className }) {
@@ -1252,6 +1253,17 @@ export default function TripDetail() {
               </div>
             ))}
           </div>
+          {/* Your role on this trip + what it lets you do (hover for detail). */}
+          {isMember && (
+            <span
+              title={ROLE_META[myRole]?.can}
+              className={`hidden sm:inline-flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded-full flex-shrink-0 ${
+                myRole === "owner" ? "bg-amber-50 text-amber-600" : myRole === "editor" ? "bg-emerald-50 text-emerald-600" : "bg-zinc-100 text-zinc-500"
+              }`}
+            >
+              {myRole === "viewer" ? "👀" : myRole === "editor" ? "✏️" : "👑"} {roleLabel(myRole)}
+            </span>
+          )}
           {canEdit && (
             <button onClick={() => setShowInvite(true)} className="flex items-center gap-1.5 bg-rose-500 hover:bg-rose-600 text-white text-xs font-medium px-3 sm:px-4 py-2 rounded-full transition-all">
               <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" /></svg>

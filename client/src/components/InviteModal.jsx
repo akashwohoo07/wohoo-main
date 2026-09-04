@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { Check, Eye, Pencil, X, AtSign, Mail, Trash2, Loader2, Crown } from "lucide-react";
 import api from "../api/axios";
 import UserSearchSelect from "./UserSearchSelect";
+import { ROLE_META } from "../lib/roles";
 
 function initials(name) { return (name || "?").trim().charAt(0).toUpperCase(); }
 
@@ -29,9 +30,13 @@ export default function InviteModal({ tripId, onClose, onInvited }) {
   useEffect(() => { loadCollab(); }, [loadCollab]);
 
   const changeRole = async (userId, newRole) => {
+    setError("");
+    // Optimistic: flip the role locally so it feels instant, revert on failure.
+    const prevMembers = collab.members;
+    setCollab((c) => ({ ...c, members: c.members.map((m) => (m.user?._id === userId ? { ...m, role: newRole } : m)) }));
     setBusyId(userId);
     try { await api.patch(`/trips/${tripId}/members/${userId}`, { role: newRole }); await loadCollab(); }
-    catch (err) { setError(err.response?.data?.message || "Could not change role"); }
+    catch (err) { setCollab((c) => ({ ...c, members: prevMembers })); setError(err.response?.data?.message || "Could not change role"); }
     finally { setBusyId(null); }
   };
   const removeMember = async (userId) => {
@@ -153,7 +158,7 @@ export default function InviteModal({ tripId, onClose, onInvited }) {
 
         {/* Access level (applies to whoever you invite) */}
         <label className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-2 block">Access level</label>
-        <div className="flex gap-2 mb-5">
+        <div className="flex gap-2 mb-2.5">
           {["viewer", "editor"].map((r) => (
             <button
               key={r}
@@ -165,9 +170,14 @@ export default function InviteModal({ tripId, onClose, onInvited }) {
             >
               <div className="flex justify-center mb-0.5">{r === "viewer" ? <Eye className="w-4 h-4" /> : <Pencil className="w-4 h-4" />}</div>
               <div className="capitalize">{r}</div>
-              <div className="text-zinc-400 text-xs mt-0.5 font-normal">{r === "viewer" ? "Can view only" : "Can edit trip"}</div>
+              <div className="text-zinc-400 text-xs mt-0.5 font-normal">{ROLE_META[r].blurb}</div>
             </button>
           ))}
+        </div>
+        {/* What each role can do — keep everyone clear on access. */}
+        <div className="text-[11px] text-zinc-400 mb-5 space-y-0.5">
+          <p><span className="font-medium text-zinc-500">Viewer</span> — {ROLE_META.viewer.can}</p>
+          <p><span className="font-medium text-zinc-500">Editor</span> — {ROLE_META.editor.can}</p>
         </div>
 
         {/* Mode toggle */}

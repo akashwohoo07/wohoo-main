@@ -6,6 +6,24 @@ Update this file whenever a feature is added, changed, or removed. Keep entries 
 
 ## Changelog
 
+### 2026-09-04 — Member management: instant add/remove/role + clearer roles
+- **Shared role source of truth** (`client/src/lib/roles.js`, `ROLE_META`): one place defines
+  what Owner / Editor / Viewer can do, reused by CreateTrip, the InviteModal and the trip header
+  so the wording never drifts. (Enforcement is unchanged and still server-side — viewers 403 on
+  any mutation; only the owner changes roles / removes members.)
+- **CreateTrip invite step:** each added person now has an **instant Viewer⇄Editor toggle** and a
+  remove (✕) — fix a mis-set role or a wrongly-added person before the trip is even created (pure
+  local state until Create). Added a one-line explainer of the selected default role.
+- **Trip page (InviteModal):** role changes are now **optimistic** (flip instantly, revert on
+  error) and the modal shows a **capability legend** ("Viewer — can view & chat", "Editor — can
+  edit the whole trip & invite; only the owner changes roles/removes"). Add / remove / cancel-
+  invite / role-change were already wired to the owner-gated endpoints.
+- **Trip header:** shows **your role badge** (👑 Owner / ✏️ Editor / 👀 Viewer) with a hover
+  tooltip of what it lets you do, so access is always clear on the trip page.
+- **Tests**: frontend `CreateTrip.test.jsx` (3: add + instant role flip, instant remove, role
+  explainer) and `InviteModal.test.jsx` (+3: role legend, owner optimistic role change → PATCH,
+  non-owner read-only). Client 37 green.
+
 ### 2026-09-04 — Notifications: always in sync with the platform (no stale Accept/Reject)
 - **Problem:** an actionable notification (trip invite / community join request) could keep
   showing Accept/Reject after the underlying invite/request was already resolved elsewhere —
