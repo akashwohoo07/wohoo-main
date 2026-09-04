@@ -1,7 +1,7 @@
 import express from "express";
 import { protect } from "../middleware/auth.js";
 import { searchAirports } from "../utils/airports.js";
-import { cacheGet, cacheSet } from "../utils/cache.js";
+import { searchStations } from "../utils/stations.js";
 
 const router = express.Router();
 router.use(protect);
@@ -12,57 +12,13 @@ router.get("/airports", (req, res) => {
   res.json({ success: true, airports: searchAirports(req.query.q, 8) });
 });
 
-// ── Railway station autocomplete (OpenStreetMap — free, no key) ─────────────
-// GET /api/transport/stations?q=new+delhi → [{ name, city, state, lat, lng, label }]
-// Returns coordinates so a manually-added train can draw its track on the map.
-// Cached (TTL 24h) because Nominatim is rate-limited by fair-use policy.
-router.get("/stations", async (req, res) => {
-  const q = (req.query.q || "").trim();
-  if (q.length < 2) return res.json({ success: true, stations: [] });
-
-  const cacheKey = `stations:${q.toLowerCase()}`;
-  try {
-    const cached = await cacheGet(cacheKey);
-    if (cached) return res.json({ success: true, stations: cached });
-  } catch { /* cache miss is fine */ }
-
-  try {
-    // Bias to actual railway stations; Nominatim ranks by relevance.
-    const url =
-      `https://nominatim.openstreetmap.org/search?format=json&limit=8&addressdetails=1&namedetails=1` +
-      `&q=${encodeURIComponent(q + " railway station")}`;
-    const r = await fetch(url, {
-      headers: { "User-Agent": "WohooTripPlanner/1.0 (support@wohoo.in)", "Accept-Language": "en" },
-      signal: AbortSignal.timeout(6000),
-    });
-    const data = await r.json();
-
-    const stations = (Array.isArray(data) ? data : [])
-      .map((p) => {
-        const a = p.address || {};
-        const city = a.city || a.town || a.village || a.municipality || a.county || "";
-        const state = a.state || a.region || "";
-        // Prefer the station's own name over the full display string.
-        const name = p.namedetails?.name || p.name || (p.display_name || "").split(",")[0] || q;
-        return {
-          name,
-          city,
-          state,
-          country: a.country || "",
-          lat: parseFloat(p.lat),
-          lng: parseFloat(p.lon),
-          label: [name, city].filter(Boolean).join(", "),
-        };
-      })
-      .filter((s) => Number.isFinite(s.lat) && Number.isFinite(s.lng));
-
-    // Best-effort cache; never fail the request on cache write.
-    cacheSet(cacheKey, stations, 60 * 60 * 24).catch(() => {});
-    return res.json({ success: true, stations });
-  } catch (err) {
-    console.error("Station search error:", err.message);
-    return res.status(502).json({ success: false, error: "network_error", message: "Station search failed" });
-  }
+// ── Railway station autocomplete (bundled dataset — free, offline, instant) ──
+// GET /api/transport/stations?q=new+delhi → [{ code, name, state, lat, lng, label }]
+// Uses a bundled 8.7k-station dataset (with coords) instead of Nominatim, which
+// blocks/rate-limits cloud server IPs. Coordinates let a manually-added train
+// draw its track between the two stations.
+router.get("/stations", (req, res) => {
+  res.json({ success: true, stations: searchStations(req.query.q, 8) });
 });
 
 // ── Flight lookup via AviationStack (server-side, avoids CORS/403) ──────────

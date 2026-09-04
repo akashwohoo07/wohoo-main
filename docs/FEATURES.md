@@ -6,6 +6,16 @@ Update this file whenever a feature is added, changed, or removed. Keep entries 
 
 ## Changelog
 
+### 2026-09-04 — Trains: station search fixed (offline dataset), select-from-list only
+- **Root cause of "manual not working":** the station autocomplete used Nominatim, which
+  **blocks/rate-limits cloud server IPs** (Fly) → no suggestions in production.
+- **Fix:** bundled an offline **8,697-station** Indian Railways dataset (`data/stations.json`,
+  code+name+coords from the open datameet/railways set) + `utils/stations.js` search (code-exact →
+  code-prefix → name-starts → contains). `/api/transport/stations` now serves this — instant, free,
+  no rate limits, no network. Dropdown shows the station name + **code** badge; picking one carries
+  its coordinates so the **track draws between the two stations**. You select from the list only.
+- Backend `transport.test.js` updated (pure dataset search + endpoint returns coords/code).
+
 ### 2026-09-04 — Trains: manual station-to-station track + richer PNR auto-fill
 - **Station autocomplete (new, free):** `GET /api/transport/stations?q=` searches railway stations
   via OpenStreetMap/Nominatim (no key), returns `{name, city, state, lat, lng, label}`, cached 24h

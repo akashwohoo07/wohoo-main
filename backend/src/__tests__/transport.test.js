@@ -2,56 +2,41 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import request from "supertest";
 import app from "../app.js";
 import { createAuthUser } from "./helpers.js";
+import { searchStations } from "../utils/stations.js";
 
 const auth = (t) => ({ Authorization: `Bearer ${t}` });
 const okJson = (body) => ({ ok: true, status: 200, json: () => Promise.resolve(body) });
 
-describe("Transport: station autocomplete", () => {
+describe("Transport: station autocomplete (bundled dataset)", () => {
   let token;
   beforeEach(async () => { ({ token } = await createAuthUser()); });
-  afterEach(() => { vi.restoreAllMocks(); });
+
+  it("the dataset search returns real stations with coordinates (pure)", () => {
+    const r = searchStations("new delhi", 8);
+    expect(r.length).toBeGreaterThan(0);
+    const ndls = r.find((s) => s.code === "NDLS") || r[0];
+    expect(Number.isFinite(ndls.lat) && Number.isFinite(ndls.lng)).toBe(true);
+    expect(ndls.label).toMatch(/\(/); // "Name (CODE)"
+    expect(searchStations("a")).toHaveLength(0); // needs >= 2 chars
+  });
 
   it("requires auth (401)", async () => {
     expect((await request(app).get("/api/transport/stations?q=delhi")).status).toBe(401);
   });
 
-  it("returns [] for short queries without calling out", async () => {
-    const spy = vi.spyOn(global, "fetch");
+  it("returns [] for short queries", async () => {
     const res = await request(app).get("/api/transport/stations?q=a").set(auth(token));
     expect(res.status).toBe(200);
     expect(res.body.stations).toEqual([]);
-    expect(spy).not.toHaveBeenCalled();
   });
 
-  it("maps OSM results to {name, city, lat, lng, label} with coords", async () => {
-    vi.spyOn(global, "fetch").mockResolvedValueOnce(
-      okJson([
-        {
-          lat: "28.6431", lon: "77.2197",
-          name: "New Delhi Railway Station",
-          display_name: "New Delhi Railway Station, Delhi, India",
-          namedetails: { name: "New Delhi Railway Station" },
-          address: { city: "Delhi", state: "Delhi", country: "India" },
-        },
-        { lat: "not-a-number", lon: "x", display_name: "junk" }, // dropped (no coords)
-      ])
-    );
-    const res = await request(app).get("/api/transport/stations?q=new+delhi").set(auth(token));
-    expect(res.status).toBe(200);
-    expect(res.body.stations).toHaveLength(1);
-    const s = res.body.stations[0];
-    expect(s.name).toBe("New Delhi Railway Station");
-    expect(s.city).toBe("Delhi");
-    expect(s.lat).toBeCloseTo(28.6431, 3);
-    expect(s.lng).toBeCloseTo(77.2197, 3);
-    expect(s.label).toBe("New Delhi Railway Station, Delhi");
-  });
-
-  it("502s gracefully when the upstream fails", async () => {
-    vi.spyOn(global, "fetch").mockRejectedValueOnce(new Error("network down"));
+  it("returns matches with coords + code for a real query", async () => {
     const res = await request(app).get("/api/transport/stations?q=mumbai").set(auth(token));
-    expect(res.status).toBe(502);
-    expect(res.body.success).toBe(false);
+    expect(res.status).toBe(200);
+    expect(res.body.stations.length).toBeGreaterThan(0);
+    const s = res.body.stations[0];
+    expect(s).toHaveProperty("code");
+    expect(Number.isFinite(s.lat) && Number.isFinite(s.lng)).toBe(true);
   });
 });
 

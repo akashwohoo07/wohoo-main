@@ -53,18 +53,17 @@ export default function StationInput({ value, onChange, onSelect, placeholder, c
         <div className="absolute z-40 left-0 right-0 mt-1 bg-white rounded-xl shadow-2xl border border-zinc-100 max-h-56 overflow-y-auto">
           {results.map((s, i) => (
             <button
-              key={`${s.name}-${s.lat}-${i}`}
+              key={`${s.code || s.name}-${i}`}
               type="button"
               onMouseDown={(e) => { e.preventDefault(); pick(s); }}
               className="w-full flex items-center gap-2.5 px-3 py-2 hover:bg-zinc-50 text-left"
             >
               <TrainFront className="w-3.5 h-3.5 text-amber-600 flex-shrink-0" />
-              <span className="min-w-0">
+              <span className="min-w-0 flex-1">
                 <span className="block text-sm text-zinc-700 truncate">{s.name}</span>
-                <span className="block text-xs text-zinc-400 truncate">
-                  {[s.city, s.state, s.country].filter(Boolean).join(", ")}
-                </span>
+                {s.state && <span className="block text-xs text-zinc-400 truncate">{s.state}</span>}
               </span>
+              {s.code && <span className="text-[10px] font-bold text-amber-600 bg-amber-50 rounded px-1.5 py-0.5 flex-shrink-0">{s.code}</span>}
             </button>
           ))}
         </div>
