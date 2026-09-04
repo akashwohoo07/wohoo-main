@@ -161,8 +161,12 @@ export default function NotificationBell() {
                 </div>
               ) : (
                 items.map((n) => {
-                  const isInvite = n.type === "trip_invite";
-                  const isRequest = n.type === "community_request";
+                  // Only show Accept/Reject while the request/invite is still
+                  // pending. Once handled anywhere, status flips and we fall
+                  // through to the resolved message + View link.
+                  const pending = n.status === "pending" || (!n.status && (n.type === "trip_invite" || n.type === "community_request"));
+                  const isInvite = n.type === "trip_invite" && pending;
+                  const isRequest = n.type === "community_request" && pending;
                   const busy = actingId === n._id;
                   const to = targetOf(n);
                   const viewLabel = n.community?._id ? "View community" : "View trip";

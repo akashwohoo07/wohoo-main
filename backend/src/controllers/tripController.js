@@ -4,7 +4,7 @@ import Invitation from "../models/Invitation.js";
 import User from "../models/User.js";
 import { dispatchEmail, JOB_INVITE } from "../queues/emailQueue.js";
 import { analyticsReadPreference } from "../config/readPreference.js";
-import { createNotification, markInvitationNotificationsRead } from "./notificationController.js";
+import { createNotification, resolveInvitationNotifications } from "./notificationController.js";
 import { postTripSystemMessage } from "./tripChatController.js";
 
 // ── CREATE TRIP ───────────────────────────────────────────────
@@ -257,6 +257,7 @@ export const inviteMember = async (req, res, next) => {
           invitation: invite._id,
           token,
           role,
+          status: "pending",
           message: `${req.user.name} invited you to join "${trip.name}"`,
         });
       } catch (notifyErr) {
@@ -333,7 +334,13 @@ export const respondToInvitation = async (req, res, next) => {
         { new: true }
       );
       await Invitation.findByIdAndUpdate(invite._id, { status: "accepted", invitedUser: req.user._id });
-      await markInvitationNotificationsRead(invite._id, req.user._id).catch(() => {});
+      const acceptedTrip = await Trip.findById(invite.trip).select("name");
+      await resolveInvitationNotifications(
+        invite._id,
+        req.user._id,
+        "accepted",
+        `You joined "${acceptedTrip?.name || "the trip"}"`
+      ).catch(() => {});
       // Announce the new member in the trip chat.
       const joinerHandle = req.user.username ? `@${req.user.username}` : req.user.name;
       await postTripSystemMessage(invite.trip, req.user._id, `${joinerHandle} joined the trip`);
@@ -355,7 +362,12 @@ export const respondToInvitation = async (req, res, next) => {
 
     if (action === "decline") {
       await Invitation.findByIdAndUpdate(invite._id, { status: "declined" });
-      await markInvitationNotificationsRead(invite._id, req.user._id).catch(() => {});
+      await resolveInvitationNotifications(
+        invite._id,
+        req.user._id,
+        "rejected",
+        `You declined the invite to "${(await Trip.findById(invite.trip).select("name"))?.name || "the trip"}"`
+      ).catch(() => {});
       try {
         const t = await Trip.findById(invite.trip).select("name");
         await createNotification({

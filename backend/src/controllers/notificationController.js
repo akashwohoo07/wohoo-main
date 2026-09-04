@@ -8,20 +8,23 @@ export async function createNotification(data) {
   return Notification.create(data);
 }
 
-// Mark every notification tied to an invitation as read for a given recipient.
-// Used when an invite is accepted/declined from the bell so the badge clears.
-export async function markInvitationNotificationsRead(invitationId, recipientId) {
+// Resolve every notification tied to an invitation for a given recipient once
+// the invite is accepted/declined (from the bell OR the invite page). Flips the
+// status so Accept/Decline disappear, optionally rewrites the message, and marks
+// it read so the badge clears.
+export async function resolveInvitationNotifications(invitationId, recipientId, status, message) {
   return Notification.updateMany(
-    { invitation: invitationId, recipient: recipientId, read: false },
-    { $set: { read: true } }
+    { invitation: invitationId, recipient: recipientId },
+    { $set: { read: true, ...(status ? { status } : {}), ...(message ? { message } : {}) } }
   );
 }
 
-// Clear the owner's join-request notification once the request is handled.
-export async function markRequestNotificationsRead(requestId) {
+// Resolve the owner's join-request notification once the request is handled
+// (from the bell OR the community page), so the stale Accept/Reject go away.
+export async function resolveRequestNotifications(requestId, status, message) {
   return Notification.updateMany(
-    { request: requestId, read: false },
-    { $set: { read: true } }
+    { request: requestId },
+    { $set: { read: true, ...(status ? { status } : {}), ...(message ? { message } : {}) } }
   );
 }
 
@@ -36,6 +39,7 @@ const serialize = (n) => ({
   token: n.token,
   role: n.role,
   message: n.message,
+  status: n.status || null,
   read: n.read,
   createdAt: n.createdAt,
 });

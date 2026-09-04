@@ -2,6 +2,7 @@
   "expo": {
     "name": "Wohoo",
     "slug": "wohoo",
+    "owner": "wohooakash",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -9,7 +10,10 @@
     "userInterfaceStyle": "light",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "in.wohoo.app"
+      "bundleIdentifier": "in.wohoo.app",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "package": "in.wohoo.app",
@@ -48,7 +52,10 @@
       "reactCompiler": true
     },
     "extra": {
-      "eas": {}
+      "eas": {
+        "projectId": "047439e0-6432-4981-8570-31412eee2dea"
+      },
+      "router": {}
     }
   }
 }

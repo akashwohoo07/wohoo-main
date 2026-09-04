@@ -4,6 +4,7 @@
     "development": {
       "developmentClient": true,
       "distribution": "internal",
+      "ios": { "simulator": true },
       "env": {
         "EXPO_PUBLIC_API_URL": "https://wohoo-api-beta.fly.dev",
         "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "725204288559-4odt12ji4fd58e1k2s2csv4l54biqrpa.apps.googleusercontent.com",
@@ -17,7 +18,7 @@
         "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "725204288559-4odt12ji4fd58e1k2s2csv4l54biqrpa.apps.googleusercontent.com",
         "EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID": "725204288559-b5mdnhoala59khjr6kn585jt6317rhm9.apps.googleusercontent.com"
       },
-      "ios": { "simulator": false },
+      "ios": { "simulator": true },
       "android": { "buildType": "apk" }
     },
     "production": {

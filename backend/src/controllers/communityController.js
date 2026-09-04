@@ -5,7 +5,7 @@ import CommunityMember from "../models/CommunityMember.js";
 import JoinRequest from "../models/JoinRequest.js";
 import Message from "../models/Message.js";
 import User from "../models/User.js";
-import { createNotification, markRequestNotificationsRead } from "./notificationController.js";
+import { createNotification, resolveRequestNotifications } from "./notificationController.js";
 import { postSystemMessage } from "./messageController.js";
 import { analyticsReadPreference } from "../config/readPreference.js";
 
@@ -242,6 +242,7 @@ export const requestToJoin = async (req, res, next) => {
         actor: req.user._id,
         community: community._id,
         request: request._id,
+        status: "pending",
         message: `${req.user.name} requested to join "${community.name}"`,
       });
     } catch (e) {
@@ -290,10 +291,18 @@ export const respondToRequest = async (req, res, next) => {
     });
     if (!request) return res.status(404).json({ success: false, message: "Request not found" });
 
+    const community = await Community.findById(request.community).select("name");
+    const requester = await User.findById(request.user).select("name username");
+    const communityName = community?.name || "the community";
+
     if (action === "reject") {
       request.status = "rejected";
       await request.save();
-      await markRequestNotificationsRead(request._id).catch(() => {});
+      await resolveRequestNotifications(
+        request._id,
+        "rejected",
+        `You declined ${handle(requester)}'s request to join "${communityName}"`
+      ).catch(() => {});
       return res.json({ success: true, message: "Request rejected" });
     }
 
@@ -308,19 +317,21 @@ export const respondToRequest = async (req, res, next) => {
       request.status = "accepted";
       await request.save({ session });
     });
-    await markRequestNotificationsRead(request._id).catch(() => {});
+    await resolveRequestNotifications(
+      request._id,
+      "accepted",
+      `${handle(requester)} is now a member of "${communityName}"`
+    ).catch(() => {});
 
-    const requester = await User.findById(request.user).select("name username");
     await postSystemMessage(request.community, request.user, `${handle(requester)} joined`);
 
     try {
-      const community = await Community.findById(request.community).select("name");
       await createNotification({
         recipient: request.user,
         type: "community_request_accepted",
         actor: req.user._id,
         community: request.community,
-        message: `Your request to join "${community?.name || "the community"}" was accepted`,
+        message: `Your request to join "${communityName}" was accepted`,
       });
     } catch (e) {
       console.error("Notification create failed:", e.message);

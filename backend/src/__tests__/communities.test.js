@@ -169,9 +169,13 @@ describe("Communities API", () => {
       const notif = await Notification.findOne({ recipient: requester.user._id, type: "community_request_accepted" });
       expect(notif).toBeTruthy();
 
-      // The owner's request notification is cleared once handled.
+      // The owner's request notification is resolved once handled — status flips
+      // to "accepted" and the message is rewritten so the bell no longer shows
+      // Accept/Reject.
       const ownerNotif = await Notification.findOne({ recipient: owner.user._id, type: "community_request", request: reqId });
       expect(ownerNotif.read).toBe(true);
+      expect(ownerNotif.status).toBe("accepted");
+      expect(ownerNotif.message).toMatch(/now a member/i);
     });
 
     it("rejecting a request does not add a member", async () => {
@@ -182,6 +186,8 @@ describe("Communities API", () => {
       expect(membership).toBeFalsy();
       const req = await JoinRequest.findById(reqId);
       expect(req.status).toBe("rejected");
+      const ownerNotif = await Notification.findOne({ recipient: owner.user._id, type: "community_request", request: reqId });
+      expect(ownerNotif.status).toBe("rejected");
     });
   });
 

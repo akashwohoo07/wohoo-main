@@ -31,6 +31,12 @@ const notificationSchema = new mongoose.Schema(
     token: { type: String }, // invitation token, for one-click accept from the bell
     role: { type: String, enum: ["editor", "viewer"] },
     message: { type: String, required: true, maxlength: 300 },
+    // Actionable notifications (trip_invite, community_request) carry a status so
+    // the UI knows whether to still show Accept/Reject. Once handled anywhere
+    // (the bell OR the community/trip page) it flips to accepted/rejected and the
+    // buttons are replaced by the resolved message. Non-actionable ones leave it
+    // unset.
+    status: { type: String, enum: ["pending", "accepted", "rejected"], default: undefined },
     read: { type: Boolean, default: false },
   },
   { timestamps: true }
