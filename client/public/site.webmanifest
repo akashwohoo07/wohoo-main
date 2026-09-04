@@ -1,0 +1,12 @@
+{
+  "name": "Wohoo — Travel Itinerary Planner",
+  "short_name": "Wohoo",
+  "description": "Collaborative travel planner: build trip itineraries, plan with friends, split expenses, and track flights & trains.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#ec4899",
+  "icons": [
+    { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml" }
+  ]
+}

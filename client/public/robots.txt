@@ -1,0 +1,13 @@
+User-agent: *
+Allow: /$
+Allow: /login
+Allow: /signup
+Allow: /u/
+# Private / app-only areas — no value to index (auth-gated).
+Disallow: /dashboard
+Disallow: /settings
+Disallow: /trips
+Disallow: /invite
+Disallow: /search
+
+Sitemap: https://wohoo.in/sitemap.xml

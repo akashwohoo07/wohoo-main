@@ -4,16 +4,101 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#ec4899" />
+
+    <!-- ── Primary SEO ─────────────────────────────────────────── -->
+    <title>Wohoo — Plan trips &amp; travel itineraries together</title>
+    <meta
+      name="description"
+      content="Wohoo is a collaborative travel planner — build day-by-day trip itineraries, invite friends to plan together, split expenses, track flights &amp; trains, and discover places. Plan your next trip on Wohoo.in."
+    />
+    <meta
+      name="keywords"
+      content="Wohoo, Woohoo, Woho, Wooho, wohoo.in, travel itinerary, trip planner, itinerary planner, travel planner, plan a trip, collaborative trip planning, split expenses, group travel, India train planner, flight tracker"
+    />
+    <link rel="canonical" href="https://wohoo.in/" />
+    <meta name="robots" content="index, follow, max-image-preview:large" />
+    <meta name="author" content="Wohoo" />
+    <meta name="application-name" content="Wohoo" />
+    <link rel="manifest" href="/site.webmanifest" />
+
+    <!-- ── Open Graph (link previews) ──────────────────────────── -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Wohoo" />
+    <meta property="og:title" content="Wohoo — Plan trips &amp; travel itineraries together" />
+    <meta
+      property="og:description"
+      content="Collaborative travel planner: build trip itineraries, plan with friends, split expenses, track flights &amp; trains, and discover places."
+    />
+    <meta property="og:url" content="https://wohoo.in/" />
+    <meta property="og:image" content="https://wohoo.in/og-image.png" />
+    <meta property="og:image:alt" content="Wohoo — collaborative travel planning" />
+    <meta property="og:locale" content="en_US" />
+
+    <!-- ── Twitter card ────────────────────────────────────────── -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Wohoo — Plan trips &amp; travel itineraries together" />
+    <meta
+      name="twitter:description"
+      content="Collaborative travel planner: build trip itineraries, plan with friends, split expenses, track flights &amp; trains, and discover places."
+    />
+    <meta name="twitter:image" content="https://wohoo.in/og-image.png" />
+
+    <!-- ── Structured data: brand + spelling variants ──────────── -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "Organization",
+            "@id": "https://wohoo.in/#organization",
+            "name": "Wohoo",
+            "alternateName": ["Woohoo", "Woho", "Wooho", "Wohoo.in", "Wohoo Travel"],
+            "url": "https://wohoo.in/",
+            "logo": "https://wohoo.in/favicon.svg",
+            "description": "Wohoo is a collaborative travel planner for building trip itineraries, planning with friends, and splitting expenses."
+          },
+          {
+            "@type": "WebSite",
+            "@id": "https://wohoo.in/#website",
+            "url": "https://wohoo.in/",
+            "name": "Wohoo",
+            "alternateName": ["Woohoo", "Woho", "Wooho"],
+            "publisher": { "@id": "https://wohoo.in/#organization" },
+            "description": "Plan trips and travel itineraries together on Wohoo."
+          },
+          {
+            "@type": "WebApplication",
+            "name": "Wohoo",
+            "url": "https://wohoo.in/",
+            "applicationCategory": "TravelApplication",
+            "operatingSystem": "Web",
+            "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+            "description": "Collaborative travel itinerary planner with expense splitting, flight and train tracking, and place discovery."
+          }
+        ]
+      }
+    </script>
+
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
       href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;0,700;1,300;1,400;1,600;1,700&family=Jost:wght@200;300;400;500;600&display=swap"
       rel="stylesheet"
     />
-    <title>Wohoo.in</title>
   </head>
   <body>
     <div id="root"></div>
+    <!-- Crawlable fallback so search engines have real content even before the
+         React app renders. Users never see this once the app mounts. -->
+    <noscript>
+      <h1>Wohoo — Plan trips &amp; travel itineraries together</h1>
+      <p>
+        Wohoo (also spelled Woohoo) is a collaborative travel planner. Build day-by-day trip
+        itineraries, invite friends to plan together, split expenses, track flights and Indian
+        trains, and discover places to visit. Start planning your next trip at wohoo.in.
+      </p>
+    </noscript>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>
