@@ -53,11 +53,14 @@ export async function uploadImage(file, kind, onProgress) {
     const xhr = new XMLHttpRequest();
     xhr.open("PUT", sig.uploadUrl);
     xhr.setRequestHeader("Content-Type", upload.type);
+    xhr.timeout = 60000; // never let a stalled network hang the UI forever
     xhr.upload.onprogress = (e) => {
       if (e.lengthComputable && onProgress) onProgress(Math.round((e.loaded / e.total) * 100));
     };
     xhr.onload = () => (xhr.status >= 200 && xhr.status < 300 ? resolve() : reject(new Error("Upload failed")));
     xhr.onerror = () => reject(new Error("Upload failed — check your connection."));
+    xhr.ontimeout = () => reject(new Error("Upload timed out — please try again."));
+    xhr.onabort = () => reject(new Error("Upload cancelled."));
     xhr.send(upload);
   });
 
