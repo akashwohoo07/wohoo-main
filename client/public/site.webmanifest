@@ -7,6 +7,6 @@
   "background_color": "#ffffff",
   "theme_color": "#ec4899",
   "icons": [
-    { "src": "/wohoo.png", "sizes": "1160x1144", "type": "image/png" }
+    { "src": "/wohoo.png", "sizes": "1110x608", "type": "image/png" }
   ]
 }
