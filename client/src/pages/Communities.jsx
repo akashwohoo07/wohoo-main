@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Search, Users, Hash, Lock, Plus, X, Loader2, Globe, Check } from "lucide-react";
+import { Search, Users, Hash, Lock, Plus, X, Loader2, Globe, Check } from "lucide-react";
 import api from "../api/axios";
 import { useAuth } from "../context/AuthContext";
-import NotificationBell from "../components/NotificationBell";
+import TopNav from "../components/TopNav";
 
 // "you" if the viewer owns it, else "@username" — used to disambiguate
 // communities that share the same name.
@@ -196,31 +196,30 @@ export default function Communities() {
   const showingSearch = q.trim().length >= 1;
 
   return (
-    <div className="min-h-[100dvh] bg-zinc-50">
-      <header className="sticky top-0 z-30 bg-white border-b border-zinc-100">
-        <div className="max-w-3xl mx-auto flex items-center gap-3 px-4 py-3">
-          <button onClick={() => navigate("/dashboard")} className="p-1.5 rounded-full hover:bg-zinc-100 text-zinc-500"><ArrowLeft className="w-5 h-5" /></button>
-          <h1 className="text-lg font-semibold text-zinc-900 flex items-center gap-2"><Users className="w-5 h-5 text-rose-500" /> Communities</h1>
-          <div className="ml-auto flex items-center gap-2">
-            <NotificationBell />
-            <button onClick={() => setShowCreate(true)} className="flex items-center gap-1.5 bg-rose-500 hover:bg-rose-600 text-white text-sm font-medium pl-3 pr-4 py-2 rounded-full transition-all">
-              <Plus className="w-4 h-4" /> <span className="hidden sm:inline">Create</span>
-            </button>
+    <div className="min-h-screen bg-white">
+      <TopNav active="community" />
+      <main className="max-w-6xl mx-auto px-4 sm:px-8 py-6 sm:py-10">
+        {/* Page header */}
+        <div className="flex items-center justify-between gap-3 mb-6">
+          <div>
+            <h1 className="text-xl sm:text-2xl font-serif text-zinc-900">Communities</h1>
+            <p className="text-sm text-zinc-400 mt-0.5">Find your people and join the conversation.</p>
           </div>
+          <button onClick={() => setShowCreate(true)} className="flex items-center gap-2 bg-rose-500 hover:bg-rose-600 text-white text-sm font-medium px-4 sm:px-5 py-2.5 rounded-full transition-all flex-shrink-0">
+            <Plus className="w-4 h-4" /> <span className="hidden sm:inline">Create community</span><span className="sm:hidden">Create</span>
+          </button>
         </div>
-      </header>
 
-      <main className="max-w-3xl mx-auto px-4 py-5">
         {/* Search + toggle */}
-        <div className="mb-3">
-          <div className="relative">
-            <Search className="w-4 h-4 text-zinc-400 absolute left-3 top-1/2 -translate-y-1/2" />
+        <div className="mb-8">
+          <div className="relative max-w-md">
+            <Search className="w-4 h-4 text-zinc-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
             <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={mode === "community" ? "Search communities…" : "Search people by username…"}
-              className="w-full bg-white border border-zinc-200 rounded-xl pl-9 pr-3 py-2.5 text-sm outline-none focus:border-rose-400" />
-            {searching && <Loader2 className="w-4 h-4 text-zinc-300 animate-spin absolute right-3 top-1/2 -translate-y-1/2" />}
+              className="w-full pl-10 pr-4 py-2.5 rounded-full border border-zinc-200 text-sm text-zinc-700 placeholder-zinc-400 focus:outline-none focus:border-rose-300 focus:ring-2 focus:ring-rose-100 transition" />
+            {searching && <Loader2 className="w-4 h-4 text-zinc-300 animate-spin absolute right-3.5 top-1/2 -translate-y-1/2" />}
           </div>
-          <div className="flex items-center gap-2 mt-2">
-            <span className="text-xs text-zinc-400">Searching for:</span>
+          <div className="flex items-center gap-2 mt-3">
+            <span className="text-xs text-zinc-400">Search:</span>
             <div className="flex gap-1 bg-zinc-100 rounded-full p-0.5">
               {[{ id: "community", label: "Communities" }, { id: "people", label: "People" }].map((o) => (
                 <button key={o.id} onClick={() => { setMode(o.id); setResults([]); }}
@@ -231,52 +230,54 @@ export default function Communities() {
         </div>
 
         {showingSearch ? (
-          <div className="space-y-2">
-            {results.length === 0 && !searching ? (
-              <p className="text-sm text-zinc-400 text-center py-10">No {mode === "community" ? "communities" : "people"} found for “{q.trim()}”.</p>
-            ) : mode === "community" ? (
-              results.map((c) => (
-                <CommunityRow key={c._id} community={c} myId={myId}
-                  onOpen={openCommunity} onJoin={join} onRequest={requestJoin}
-                  busy={busyId === c._id} requested={requestedIds.includes(c._id)} />
-              ))
-            ) : (
-              results.map((u) => (
-                <button key={u._id} onClick={() => navigate(`/u/${u.username}`)} className="w-full flex items-center gap-3 bg-white border border-zinc-100 rounded-2xl p-3 hover:border-zinc-200 text-left">
-                  <div className="w-11 h-11 rounded-full overflow-hidden bg-rose-100 flex items-center justify-center flex-shrink-0">
-                    {u.avatar ? <img src={u.avatar} alt="" className="w-full h-full object-cover" /> : <span className="font-semibold text-rose-600">{u.name.charAt(0).toUpperCase()}</span>}
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold text-zinc-800 truncate">{u.name}</p>
-                    <p className="text-xs text-zinc-400 truncate">@{u.username}</p>
-                  </div>
-                </button>
-              ))
-            )}
-          </div>
+          results.length === 0 && !searching ? (
+            <p className="text-sm text-zinc-400 text-center py-16">No {mode === "community" ? "communities" : "people"} found for “{q.trim()}”.</p>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {mode === "community"
+                ? results.map((c) => (
+                    <CommunityRow key={c._id} community={c} myId={myId}
+                      onOpen={openCommunity} onJoin={join} onRequest={requestJoin}
+                      busy={busyId === c._id} requested={requestedIds.includes(c._id)} />
+                  ))
+                : results.map((u) => (
+                    <button key={u._id} onClick={() => navigate(`/u/${u.username}`)} className="w-full flex items-center gap-3 bg-white border border-zinc-100 rounded-2xl p-3 hover:border-zinc-200 hover:shadow-sm transition-all text-left">
+                      <div className="w-11 h-11 rounded-full overflow-hidden bg-rose-100 flex items-center justify-center flex-shrink-0">
+                        {u.avatar ? <img src={u.avatar} alt="" className="w-full h-full object-cover" /> : <span className="font-semibold text-rose-600">{u.name.charAt(0).toUpperCase()}</span>}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-zinc-800 truncate">{u.name}</p>
+                        <p className="text-xs text-zinc-400 truncate">@{u.username}</p>
+                      </div>
+                    </button>
+                  ))}
+            </div>
+          )
         ) : loading ? (
-          <div className="flex justify-center py-16"><Loader2 className="w-6 h-6 animate-spin text-zinc-300" /></div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {[1, 2, 3, 4].map((i) => <div key={i} className="h-20 rounded-2xl bg-zinc-100 animate-pulse" />)}
+          </div>
         ) : owned.length === 0 && joined.length === 0 ? (
-          <div className="flex flex-col items-center justify-center gap-3 text-center py-16">
-            <Users className="w-12 h-12 text-zinc-200" strokeWidth={1.5} />
+          <div className="border-2 border-dashed border-zinc-200 rounded-2xl p-12 text-center">
+            <Users className="w-10 h-10 text-zinc-300 mx-auto mb-3" strokeWidth={1.5} />
             <h3 className="font-semibold text-zinc-700">No communities yet</h3>
-            <p className="text-sm text-zinc-400 max-w-xs">Create one or search public communities to join and start chatting.</p>
-            <button onClick={() => setShowCreate(true)} className="mt-1 bg-rose-500 hover:bg-rose-600 text-white text-sm font-medium px-5 py-2.5 rounded-full inline-flex items-center gap-1.5"><Plus className="w-4 h-4" /> Create community</button>
+            <p className="text-sm text-zinc-400 max-w-xs mx-auto mt-1">Create one, or search public communities to join and start chatting.</p>
+            <button onClick={() => setShowCreate(true)} className="mt-4 bg-rose-500 hover:bg-rose-600 text-white text-sm font-medium px-5 py-2.5 rounded-full inline-flex items-center gap-1.5"><Plus className="w-4 h-4" /> Create community</button>
           </div>
         ) : (
-          <div className="space-y-6">
+          <div className="space-y-10">
             {owned.length > 0 && (
               <section>
-                <h2 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-2">My communities</h2>
-                <div className="space-y-2">
+                <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider mb-4">My communities</h2>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {owned.map((c) => <CommunityRow key={c._id} community={c} myId={myId} onOpen={openCommunity} />)}
                 </div>
               </section>
             )}
             {joined.length > 0 && (
               <section>
-                <h2 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-2">Joined</h2>
-                <div className="space-y-2">
+                <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider mb-4">Joined</h2>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {joined.map((c) => <CommunityRow key={c._id} community={c} myId={myId} onOpen={openCommunity} />)}
                 </div>
               </section>
