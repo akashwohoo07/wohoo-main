@@ -27,6 +27,7 @@ import tripChatRoutes from "./routes/tripChatRoutes.js";
 import tripNotesRoutes from "./routes/tripNotesRoutes.js";
 import analyticsRoutes from "./routes/analyticsRoutes.js";
 import adminRoutes from "./routes/adminRoutes.js";
+import discoverRoutes from "./routes/discoverRoutes.js";
 
 initializePassport();
 
@@ -99,6 +100,7 @@ app.use("/api/users", userRoutes);
 app.use("/api/follow", followRoutes);
 app.use("/api/explore", exploreRoutes);
 app.use("/api/transport", transportRoutes);
+app.use("/api/discover", discoverRoutes);
 
 
 

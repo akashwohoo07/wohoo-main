@@ -6,6 +6,29 @@ Update this file whenever a feature is added, changed, or removed. Keep entries 
 
 ## Changelog
 
+### 2026-09-04 — Discover public trips + personal Wishlist (backend)
+- New **discover** module (`discoverController` + `discoverRoutes`, mounted at `/api/discover`,
+  all routes `protect`-gated).
+- **`GET /api/discover/trips?q=&cursor=&limit=`** — browse **public** trips (`isPublic: true`),
+  newest-first, cursor-paginated (`limit+1` → `hasMore`/`nextCursor`, max 40). `q` matches trip
+  `name` + `destination.name/city/country` via a regex run through `escapeRegex` (no injection).
+  Routed to a read replica (`analyticsReadPreference()`) as a browse/display read. Returns a
+  trimmed shape (owner populated `name/avatar/username`, `membersCount`, cover, dates).
+- **Wishlist** (`Wishlist` model): a user's saved items from Discover. Deliberately denormalized —
+  stores a display snapshot (title/subtitle/image/rating/lat/lng/meta) so it renders without
+  re-fetching a source that went private or re-billing Google Places. `kind` ∈
+  trip/place/restaurant/hotel/stay/activity/sight; `refId` = trip id or Google placeId.
+  - `POST /api/discover/wishlist` — idempotent upsert, unique per `(user, kind, refId)`; a
+    duplicate under a race (11000) returns 200 with the existing item. Whitelisted fields only.
+  - `GET /api/discover/wishlist?kind=&cursor=&limit=` — the caller's saved items, newest-first,
+    cursor-paginated (max 60), optional `kind` filter.
+  - `GET /api/discover/wishlist/keys` — the set of saved `refIds` (for filled-heart state on Discover).
+  - `DELETE /api/discover/wishlist/:id` — remove by wishlist `_id` **or** `refId`; scoped to the
+    caller (another user's item → 404).
+- **Tests**: `discover.test.js` (14) — public-only filtering, `q` search + regex escaping,
+  pagination; wishlist add/idempotency, validation (400), kind→trip ref, per-user list scoping,
+  kind filter, keys, remove by id/refId, cross-user 404, and 401s.
+
 ### 2026-09-02 — Notes tab: collaborative notes feed + checklists
 - The trip **Notes** tab now has two sections (toggle): **Notes** and **Checklists**.
 - **Notes feed** (`TripNote` collection, cursor-paginated): any trip member can post a note;
