@@ -49,8 +49,14 @@ export async function postSystemMessage(communityId, subjectUserId, text) {
 //   ?cursor=<iso> → older history, newest-first (infinite scroll up)
 export const listMessages = async (req, res, next) => {
   try {
+    // Public communities are readable by any logged-in user (so they can preview
+    // the chat before joining); private communities stay members-only.
     if (!(await getMembership(req.params.id, req.user._id))) {
-      return res.status(403).json({ success: false, message: "Members only" });
+      const community = await Community.findById(req.params.id).select("type").lean();
+      if (!community) return res.status(404).json({ success: false, message: "Community not found" });
+      if (community.type !== "public") {
+        return res.status(403).json({ success: false, message: "Members only" });
+      }
     }
     const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 30, 1), 50);
 

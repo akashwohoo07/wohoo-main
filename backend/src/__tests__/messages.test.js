@@ -53,9 +53,18 @@ describe("Community chat", () => {
       expect(res.status).toBe(403);
     });
 
-    it("non-members cannot read (403)", async () => {
+    it("non-members CAN read a PUBLIC community (preview before joining)", async () => {
       const stranger = await createAuthUser({ username: uname() });
       const res = await request(app).get(`/api/communities/${community._id}/messages`).set(auth(stranger.token));
+      expect(res.status).toBe(200); // public → readable
+      // ...but still cannot post.
+      expect((await send(stranger.token, { text: "hi" })).status).toBe(403);
+    });
+
+    it("non-members cannot read a PRIVATE community (403)", async () => {
+      const priv = await makeCommunity(owner.token, { type: "private" });
+      const stranger = await createAuthUser({ username: uname() });
+      const res = await request(app).get(`/api/communities/${priv._id}/messages`).set(auth(stranger.token));
       expect(res.status).toBe(403);
     });
 

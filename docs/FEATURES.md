@@ -6,6 +6,17 @@ Update this file whenever a feature is added, changed, or removed. Keep entries 
 
 ## Changelog
 
+### 2026-09-05 — Public communities: preview the chat + Join button
+- A logged-in user visiting a **public** community they haven't joined can now **read the chat**
+  (preview before joining). `listMessages` allows reads when the community is public OR the caller
+  is a member; **private** communities stay members-only, and **posting still requires membership**
+  (`sendMessage` unchanged → 403 for non-members).
+- **Frontend:** for a public non-member the message composer is replaced by a **"Join community"**
+  button bar ("Join to chat and post…"); joining reloads and unlocks the composer. The member list
+  fetch is now best-effort so the chat still loads for non-members (members list is members-only).
+- **Tests**: `messages.test.js` — non-member CAN read a public community (200) but not post (403);
+  non-member cannot read a private community (403). Backend 298 green.
+
 ### 2026-09-05 — Community settings (edit name/description, privacy, avatar/cover)
 - New **`PATCH /api/communities/:id`** (`updateCommunity`) — the first way to edit a community
   after creation. Owner & admins can change **name, description, avatar, cover**; **only the owner**

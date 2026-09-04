@@ -335,6 +335,7 @@ export default function CommunityDetail() {
 
   const canManage = community?.myRole === "owner" || community?.myRole === "admin";
   const isOwner = community?.myRole === "owner";
+  const isMember = !!community?.myRole;
   const myId = user?._id || user?.id;
   const creator = community ? creatorLabel(community, myId) : null;
 
@@ -408,15 +409,15 @@ export default function CommunityDetail() {
       setLocked(!!data.locked);
       setRequested(!!data.requested);
       if (!data.locked) {
-        const [msgs, mem] = await Promise.all([
-          api.get(`/communities/${id}/messages?limit=40`),
-          api.get(`/communities/${id}/members`),
-        ]);
+        // Public communities are viewable by non-members (preview the chat before
+        // joining). Messages must load for everyone; members is members-only, so
+        // fetch it best-effort (it 403s for a non-member and that's fine).
+        const msgs = await api.get(`/communities/${id}/messages?limit=40`);
         setMessages(msgs.data.messages);
-        setMembers(mem.data.members);
         setHasOlder(!!msgs.data.hasMore);
         setOlderCursor(msgs.data.nextCursor || null);
         if (msgs.data.messages.length) lastAtRef.current = msgs.data.messages[msgs.data.messages.length - 1].createdAt;
+        api.get(`/communities/${id}/members`).then((mem) => setMembers(mem.data.members)).catch(() => {});
         api.patch(`/communities/${id}/read`).catch(() => {});
         scrollToBottom();
       }
@@ -524,6 +525,13 @@ export default function CommunityDetail() {
 
   const requestJoin = async () => {
     try { await api.post(`/communities/${id}/request`); setRequested(true); } catch { /* ignore */ }
+  };
+
+  const [joining, setJoining] = useState(false);
+  const joinCommunity = async () => {
+    setJoining(true);
+    try { await api.post(`/communities/${id}/join`); await loadCommunity(); }
+    catch { /* ignore */ } finally { setJoining(false); }
   };
 
   const respondRequest = async (reqId, action) => {
@@ -720,7 +728,9 @@ export default function CommunityDetail() {
             )}
           </div>
 
-          {/* Composer */}
+          {/* Composer — members only. Public non-members can read the chat but
+              get a Join button instead of the message box. */}
+          {isMember ? (
           <form onSubmit={sendText} className="relative flex items-center gap-2 px-3 sm:px-6 py-3 bg-white border-t border-zinc-100 flex-shrink-0">
             {/* @mention typeahead */}
             {mention && mentionList.length > 0 && (
@@ -756,6 +766,15 @@ export default function CommunityDetail() {
               {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
             </button>
           </form>
+          ) : (
+            <div className="flex items-center justify-between gap-3 px-3 sm:px-6 py-3 bg-white border-t border-zinc-100 flex-shrink-0">
+              <p className="text-sm text-zinc-500 min-w-0 truncate">Join to chat and post in this community.</p>
+              <button onClick={joinCommunity} disabled={joining}
+                className="inline-flex items-center gap-1.5 bg-rose-500 hover:bg-rose-600 disabled:opacity-50 text-white text-sm font-medium px-5 py-2.5 rounded-full flex-shrink-0 transition-all">
+                {joining ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />} Join community
+              </button>
+            </div>
+          )}
         </>
       )}
 
