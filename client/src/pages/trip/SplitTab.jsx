@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import {
-  Plus, Receipt, Scale, X, Trash2, ChevronRight, ArrowLeft, Users, Wallet, TrendingUp, TrendingDown, Loader2,
+  Plus, Receipt, Scale, X, Trash2, Pencil, ChevronRight, ArrowLeft, Users, Wallet, TrendingUp, TrendingDown, Loader2,
 } from "lucide-react";
 import api from "../../api/axios";
 
@@ -35,18 +35,39 @@ const SPLIT_OPTIONS = [
   { id: "shares", label: "Shares" },
 ];
 
+// Reconstruct the per-person input values from a saved expense so editing an
+// exact/percentage/shares split reproduces it exactly. `owed` is stored resolved
+// (major units); for shares we reuse the owed amounts as proportional weights
+// (same ratios → same split).
+function initialValues(expense) {
+  if (!expense || expense.splitMethod === "equal") return {};
+  const out = {};
+  for (const p of expense.participants || []) {
+    const id = (p.user?._id || p.user || "").toString();
+    if (expense.splitMethod === "exact" || expense.splitMethod === "shares") out[id] = String(p.owed);
+    else if (expense.splitMethod === "percentage") out[id] = String(round2((p.owed / expense.amount) * 100));
+  }
+  return out;
+}
+
 // ── Add / Edit expense modal ──────────────────────────────────
-function ExpenseModal({ trip, currentUser, onClose, onSaved }) {
+function ExpenseModal({ trip, currentUser, expense, onClose, onSaved }) {
   const members = trip.members || [];
   const myId = (currentUser?._id || currentUser?.id || "").toString();
+  const isEdit = !!expense;
+  const pid = (p) => (p.user?._id || p.user || "").toString();
 
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [amount, setAmount] = useState("");
-  const [paidBy, setPaidBy] = useState(myId || memberId(members[0] || {}));
-  const [method, setMethod] = useState("equal");
-  const [selected, setSelected] = useState(() => new Set(members.map(memberId)));
-  const [values, setValues] = useState({}); // userId -> raw input for exact/%/shares
+  const [title, setTitle] = useState(expense?.title || "");
+  const [description, setDescription] = useState(expense?.description || "");
+  const [amount, setAmount] = useState(expense ? String(expense.amount) : "");
+  const [paidBy, setPaidBy] = useState(
+    (expense?.paidBy?._id || expense?.paidBy || myId || memberId(members[0] || {})).toString()
+  );
+  const [method, setMethod] = useState(expense?.splitMethod || "equal");
+  const [selected, setSelected] = useState(() =>
+    expense ? new Set((expense.participants || []).map(pid)) : new Set(members.map(memberId))
+  );
+  const [values, setValues] = useState(() => initialValues(expense)); // userId -> raw input
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -113,14 +134,17 @@ function ExpenseModal({ trip, currentUser, onClose, onSaved }) {
         }
         return p;
       });
-      const { data } = await api.post(`/trips/${trip._id}/expenses`, {
+      const payload = {
         title: title.trim(),
         description: description.trim(),
         amount: amountNum,
         paidBy,
         splitMethod: method,
         participants,
-      });
+      };
+      const { data } = isEdit
+        ? await api.put(`/trips/${trip._id}/expenses/${expense._id}`, payload)
+        : await api.post(`/trips/${trip._id}/expenses`, payload);
       onSaved(data.expense);
     } catch (err) {
       setError(err.response?.data?.message || "Could not save expense.");
@@ -133,7 +157,7 @@ function ExpenseModal({ trip, currentUser, onClose, onSaved }) {
     <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 sm:px-4">
       <div className="bg-white w-full sm:max-w-lg sm:rounded-2xl rounded-t-2xl shadow-2xl max-h-[92vh] flex flex-col">
         <div className="flex items-center justify-between px-5 py-4 border-b border-zinc-100 flex-shrink-0">
-          <h3 className="text-lg font-semibold text-zinc-900">Add an expense</h3>
+          <h3 className="text-lg font-semibold text-zinc-900">{isEdit ? "Edit expense" : "Add an expense"}</h3>
           <button onClick={onClose} className="p-1.5 rounded-full hover:bg-zinc-100 text-zinc-400"><X className="w-5 h-5" /></button>
         </div>
 
@@ -261,7 +285,7 @@ function ExpenseModal({ trip, currentUser, onClose, onSaved }) {
             className="w-full bg-rose-500 hover:bg-rose-600 disabled:opacity-40 disabled:cursor-not-allowed text-white font-medium py-3 rounded-full transition-all flex items-center justify-center gap-2"
           >
             {saving && <Loader2 className="w-4 h-4 animate-spin" />}
-            Save expense
+            {isEdit ? "Save changes" : "Save expense"}
           </button>
         </div>
       </div>
@@ -333,11 +357,18 @@ export default function SplitTab({ trip, canEdit, isMember, currentUser }) {
   const [balances, setBalances] = useState(null); // { total, balances, settlements }
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [editing, setEditing] = useState(null); // expense being edited, or null for "add"
   const [detailMember, setDetailMember] = useState(null);
 
+  // Resolve a display name from current members OR the balances roster (which
+  // also includes former members with activity), so settlement rows never show
+  // "Someone" for a person who left the trip.
   const memberName = useCallback(
-    (id) => memberUser((trip.members || []).find((m) => memberId(m) === String(id)) || {}).name || "Someone",
-    [trip.members]
+    (id) =>
+      memberUser((trip.members || []).find((m) => memberId(m) === String(id)) || {}).name ||
+      (balances?.balances || []).find((b) => String(b.user._id) === String(id))?.user?.name ||
+      "Someone",
+    [trip.members, balances]
   );
 
   const load = useCallback(async () => {
@@ -369,7 +400,10 @@ export default function SplitTab({ trip, canEdit, isMember, currentUser }) {
     }
   };
 
-  const onSaved = () => { setShowModal(false); load(); };
+  const openAdd = () => { setEditing(null); setShowModal(true); };
+  const openEdit = (expense) => { setEditing(expense); setShowModal(true); };
+  const closeModal = () => { setShowModal(false); setEditing(null); };
+  const onSaved = () => { closeModal(); load(); };
 
   if (!isMember) {
     return (
@@ -417,7 +451,7 @@ export default function SplitTab({ trip, canEdit, isMember, currentUser }) {
           )}
           {canEdit && (
             <button
-              onClick={() => setShowModal(true)}
+              onClick={openAdd}
               className="flex items-center gap-1.5 bg-rose-500 hover:bg-rose-600 text-white text-sm font-medium pl-3 pr-4 py-2 rounded-full shadow-sm active:scale-95 transition-all flex-shrink-0"
             >
               <Plus className="w-4 h-4" />
@@ -456,12 +490,22 @@ export default function SplitTab({ trip, canEdit, isMember, currentUser }) {
                   </div>
                   <p className="text-sm font-semibold text-zinc-900 tabular-nums flex-shrink-0">{fmt(e.amount)}</p>
                   {canEdit && (
-                    <button
-                      onClick={() => removeExpense(e._id)}
-                      className="p-1.5 rounded-lg text-zinc-300 hover:text-rose-500 hover:bg-rose-50 transition-colors sm:opacity-0 sm:group-hover:opacity-100"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    <div className="flex items-center gap-0.5 flex-shrink-0 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                      <button
+                        onClick={() => openEdit(e)}
+                        title="Edit expense"
+                        className="p-1.5 rounded-lg text-zinc-300 hover:text-rose-500 hover:bg-rose-50 transition-colors"
+                      >
+                        <Pencil className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => removeExpense(e._id)}
+                        title="Delete expense"
+                        className="p-1.5 rounded-lg text-zinc-300 hover:text-rose-500 hover:bg-rose-50 transition-colors"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   )}
                 </div>
               ))
@@ -480,7 +524,10 @@ export default function SplitTab({ trip, canEdit, isMember, currentUser }) {
                 >
                   <Avatar user={b.user} size={38} />
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-zinc-800 truncate">{b.user.name}</p>
+                    <p className="text-sm font-medium text-zinc-800 truncate flex items-center gap-1.5">
+                      {b.user.name}
+                      {b.former && <span className="text-[10px] font-semibold text-amber-600 bg-amber-50 rounded-full px-1.5 py-0.5 flex-shrink-0">Left trip</span>}
+                    </p>
                     <p className="text-xs text-zinc-400">paid {fmt(b.paid)} · share {fmt(b.owed)}</p>
                   </div>
                   <div className="text-right flex items-center gap-2">
@@ -517,7 +564,7 @@ export default function SplitTab({ trip, canEdit, isMember, currentUser }) {
       </div>
 
       {showModal && (
-        <ExpenseModal trip={trip} currentUser={currentUser} onClose={() => setShowModal(false)} onSaved={onSaved} />
+        <ExpenseModal trip={trip} currentUser={currentUser} expense={editing} onClose={closeModal} onSaved={onSaved} />
       )}
     </div>
   );

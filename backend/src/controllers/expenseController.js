@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import Expense from "../models/Expense.js";
 import Trip from "../models/Trip.js";
+import User from "../models/User.js";
 import { computeSplits, settleBalances, toMinor, toMajor, SplitError } from "../utils/splits.js";
 
 // ── Helpers ───────────────────────────────────────────────────
@@ -186,12 +187,29 @@ export const getBalances = async (req, res, next) => {
 
     // Include every trip member (even zero-activity ones) for a complete view.
     const trip = await Trip.findById(tripId).populate("members.user", "name avatar email").lean();
-    const balances = trip.members.map((m) => {
-      const id = String(m.user._id);
+    const memberIds = new Set(trip.members.map((m) => String(m.user._id)));
+
+    // Money integrity: a user who paid/owes but has since LEFT (or been removed
+    // from) the trip still holds real balance. If we dropped them, sums wouldn't
+    // reconcile and settlements wouldn't zero out. So union current members with
+    // any user still referenced by an expense, flagging the latter as `former`.
+    const formerIds = [...new Set([...paidMap.keys(), ...owedMap.keys()])].filter((id) => !memberIds.has(id));
+    const formerUsers = formerIds.length
+      ? await User.find({ _id: { $in: formerIds } }).select("name avatar email").lean()
+      : [];
+
+    const rows = [
+      ...trip.members.map((m) => ({ user: m.user, former: false })),
+      ...formerUsers.map((u) => ({ user: u, former: true })),
+    ];
+
+    const balances = rows.map(({ user, former }) => {
+      const id = String(user._id);
       const paid = paidMap.get(id) || 0;
       const owed = owedMap.get(id) || 0;
       return {
-        user: { _id: m.user._id, name: m.user.name, avatar: m.user.avatar, email: m.user.email },
+        user: { _id: user._id, name: user.name, avatar: user.avatar, email: user.email },
+        former,
         paid: toMajor(paid),
         owed: toMajor(owed),
         net: toMajor(paid - owed), // >0 => is owed money, <0 => owes money

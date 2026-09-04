@@ -531,6 +531,37 @@ describe("Expenses API", () => {
       for (const v of Object.values(final)) expect(v).toBeCloseTo(0, 5);
     });
 
+    it("keeps a removed member's balance so money still reconciles (marked former)", async () => {
+      // owner pays 90, split 3 ways equally (30 each).
+      await request(app).post(base()).set(auth(owner.token)).send({
+        title: "Villa",
+        amount: 90,
+        paidBy: owner.user._id,
+        splitMethod: "equal",
+        participants: [{ user: owner.user._id }, { user: editor.user._id }, { user: viewer.user._id }],
+      });
+      // The viewer leaves / is removed from the trip AFTER incurring a share.
+      await request(app).delete(`/api/trips/${trip._id}/members/${viewer.user._id}`).set(auth(owner.token));
+
+      const res = await request(app).get(`${base()}/balances`).set(auth(owner.token));
+      const byId = Object.fromEntries(res.body.balances.map((b) => [b.user._id, b]));
+
+      // The ex-member still appears (flagged former) with their 30 owed.
+      const ex = byId[viewer.user._id.toString()];
+      expect(ex).toBeTruthy();
+      expect(ex.former).toBe(true);
+      expect(ex.net).toBeCloseTo(-30, 5);
+      // Current members are not flagged former.
+      expect(byId[owner.user._id.toString()].former).toBe(false);
+
+      // Money is conserved and settlements still zero everyone out.
+      const netSum = res.body.balances.reduce((a, b) => a + b.net, 0);
+      expect(netSum).toBeCloseTo(0, 5);
+      const final = Object.fromEntries(res.body.balances.map((b) => [b.user._id, b.net]));
+      for (const t of res.body.settlements) { final[t.from] += t.amount; final[t.to] -= t.amount; }
+      for (const v of Object.values(final)) expect(v).toBeCloseTo(0, 5);
+    });
+
     it("balances recompute after an expense is deleted", async () => {
       const create = await request(app).post(base()).set(auth(owner.token)).send({
         title: "Temp",

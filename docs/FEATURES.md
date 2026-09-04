@@ -6,6 +6,24 @@ Update this file whenever a feature is added, changed, or removed. Keep entries 
 
 ## Changelog
 
+### 2026-09-04 — Expenses & splits: edit expenses + money stays reconciled
+- **Edit an expense (frontend):** the backend `PUT /trips/:tripId/expenses/:id` existed but the UI
+  only let you add/delete. The expense modal now doubles as an **edit** modal — pre-fills title,
+  amount, payer, split method, participants and per-person values, and reconstructs exact/%/shares
+  inputs so an edit reproduces the split exactly. Each expense row gets a pencil (✎) next to the
+  bin; both are **editor-only** (`canEdit`), matching the server (viewers 403 on create/update/delete).
+- **Any trip member splittable:** payer dropdown + "Split between" checkboxes already covered every
+  member; the server independently re-validates that the payer and all participants are current trip
+  members, and resolves `owed` server-side in integer paise (`sum(owed) === amount`).
+- **Balances stay in sync when someone leaves (DB integrity):** `getBalances` used to iterate only
+  *current* members, so a member removed after paying/owing silently vanished and net sums no longer
+  reconciled to zero. It now unions current members with any user still referenced by an expense,
+  flagging them `former: true`; the UI shows a **"Left trip"** badge and settlement suggestions
+  resolve their name. Money is always conserved.
+- **Tests**: backend `expenses.test.js` (+1: removed member keeps balance, `former` flag, net sum &
+  settlements still zero); frontend `SplitTab.test.jsx` (4: editor vs viewer controls, add-modal
+  member selection, edit→PUT with pre-fill, "Left trip" badge). Backend 280 green, client 41 green.
+
 ### 2026-09-04 — Member management: instant add/remove/role + clearer roles
 - **Shared role source of truth** (`client/src/lib/roles.js`, `ROLE_META`): one place defines
   what Owner / Editor / Viewer can do, reused by CreateTrip, the InviteModal and the trip header
