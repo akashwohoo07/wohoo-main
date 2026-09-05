@@ -5,7 +5,7 @@ import {
   presignFile,
   confirmFile,
   listFiles,
-  getFileLink,
+  streamFile,
   updateFile,
   deleteFile,
   updateFilesSettings,
@@ -21,7 +21,7 @@ router.get("/", listFiles);
 router.post("/presign", uploadLimiter, presignFile);
 router.post("/confirm", confirmFile);
 router.patch("/settings", updateFilesSettings);
-router.get("/:fileId/link", getFileLink);
+router.get("/:fileId/download", streamFile);
 router.patch("/:fileId", updateFile);
 router.delete("/:fileId", deleteFile);
 

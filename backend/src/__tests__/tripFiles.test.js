@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
+import { Readable } from "stream";
 import request from "supertest";
 import app from "../app.js";
 import { createAuthUser } from "./helpers.js";
@@ -111,18 +112,28 @@ describe("Trip files (private documents)", () => {
       expect(editorList).toHaveLength(2); // members file + own private
     });
 
-    it("signed link: owner denied on someone else's private file (403); uploader gets a url", async () => {
+    it("stream: owner denied on someone else's private file (403); uploader can stream it", async () => {
       const f = await addFile(editor, "private");
-      expect((await request(app).get(`${base()}/${f._id}/link`).set(auth(owner.token))).status).toBe(403);
-      const ok = await request(app).get(`${base()}/${f._id}/link`).set(auth(editor.token));
+      expect((await request(app).get(`${base()}/${f._id}/download`).set(auth(owner.token))).status).toBe(403);
+      send.mockResolvedValueOnce({ Body: Readable.from(Buffer.from("%PDF data")), ContentType: "application/pdf", ContentLength: 9 });
+      const ok = await request(app).get(`${base()}/${f._id}/download`).set(auth(editor.token));
       expect(ok.status).toBe(200);
-      expect(ok.body.url).toBe("https://signed.example.com/x");
+      expect(ok.headers["content-type"]).toContain("application/pdf");
     });
 
-    it("viewer (member) can see + open members files", async () => {
+    it("a NON-MEMBER cannot stream any file, even a members-visible one (403) — a forwarded link is useless", async () => {
+      const f = await addFile(owner, "members");
+      const stranger = await createAuthUser({ username: uname() });
+      expect((await request(app).get(`${base()}/${f._id}/download`).set(auth(stranger.token))).status).toBe(403);
+      // and unauthenticated → 401
+      expect((await request(app).get(`${base()}/${f._id}/download`)).status).toBe(401);
+    });
+
+    it("viewer (member) can see + stream members files", async () => {
       const f = await addFile(owner, "members");
       expect((await request(app).get(base()).set(auth(viewer.token))).body.files).toHaveLength(1);
-      expect((await request(app).get(`${base()}/${f._id}/link`).set(auth(viewer.token))).status).toBe(200);
+      send.mockResolvedValueOnce({ Body: Readable.from(Buffer.from("x")), ContentType: "application/pdf", ContentLength: 1 });
+      expect((await request(app).get(`${base()}/${f._id}/download`).set(auth(viewer.token))).status).toBe(200);
     });
   });
 

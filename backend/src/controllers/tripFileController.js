@@ -2,6 +2,7 @@ import crypto from "crypto";
 import mongoose from "mongoose";
 import { PutObjectCommand, GetObjectCommand, HeadObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { Readable } from "stream";
 import Trip from "../models/Trip.js";
 import TripFile from "../models/TripFile.js";
 import { getR2, filesConfigured, R2_FILES_BUCKET_NAME } from "../config/r2.js";
@@ -22,7 +23,6 @@ const LIMITS = {
   image: { max: 10, maxBytes: 10 * 1024 * 1024 },
 };
 const PRESIGN_TTL = 120;   // upload URL life (seconds)
-const LINK_TTL = 5 * 60;   // view/download link life (seconds)
 
 const prefixFor = (tripId) => `trips/${tripId}/`;
 
@@ -188,30 +188,46 @@ export const listFiles = async (req, res, next) => {
   }
 };
 
-// ── SIGNED VIEW / DOWNLOAD LINK ───────────────────────────────
-export const getFileLink = async (req, res, next) => {
+// ── STREAM FILE (view / download) ─────────────────────────────
+// Streams the bytes through us instead of handing out a signable R2 URL. Every
+// request re-checks auth + trip membership + visibility, so there is NO shareable
+// link: a member can't forward a working URL to a non-member (they'd hit this
+// endpoint without a valid session/membership and get 401/403).
+export const streamFile = async (req, res, next) => {
   try {
     if (!filesConfigured) return res.status(503).json({ success: false, error: "uploads_unconfigured" });
     const ctx = await loadTripForMember(req, res);
-    if (!ctx) return;
+    if (!ctx) return; // non-members are rejected here (403)
     const file = await TripFile.findOne({ _id: req.params.fileId, trip: req.params.tripId });
     if (!file) return res.status(404).json({ success: false, message: "File not found" });
     // Private → only the uploader.
     if (file.visibility === "private" && file.uploadedBy.toString() !== req.user._id.toString()) {
       return res.status(403).json({ success: false, message: "You don't have access to this file" });
     }
-    const download = req.query.download === "1" || req.query.download === "true";
+
+    let obj;
+    try {
+      obj = await getR2().send(new GetObjectCommand({ Bucket: R2_FILES_BUCKET_NAME, Key: file.key }));
+    } catch {
+      return res.status(404).json({ success: false, message: "File not found" });
+    }
+
+    const inline = req.query.inline === "1" || req.query.inline === "true";
+    const ext = file.key.slice(file.key.lastIndexOf(".")) || "";
     const safeName = file.name.replace(/[^\w.\- ]/g, "_");
-    const url = await getSignedUrl(
-      getR2(),
-      new GetObjectCommand({
-        Bucket: R2_FILES_BUCKET_NAME,
-        Key: file.key,
-        ResponseContentDisposition: `${download ? "attachment" : "inline"}; filename="${safeName}"`,
-      }),
-      { expiresIn: LINK_TTL }
-    );
-    res.json({ success: true, url, expiresIn: LINK_TTL });
+    const filename = safeName.includes(".") ? safeName : `${safeName}${ext}`;
+
+    res.setHeader("Content-Type", obj.ContentType || file.contentType);
+    // Use the actual object length from R2 (must match the bytes we stream).
+    if (obj.ContentLength != null) res.setHeader("Content-Length", obj.ContentLength);
+    res.setHeader("Content-Disposition", `${inline ? "inline" : "attachment"}; filename="${filename}"`);
+    // Never let a shared/cached copy be reused without re-auth.
+    res.setHeader("Cache-Control", "private, no-store");
+    res.setHeader("X-Content-Type-Options", "nosniff");
+
+    const body = obj.Body instanceof Readable ? obj.Body : Readable.from(obj.Body);
+    body.on("error", () => { if (!res.headersSent) res.status(500); res.end(); });
+    body.pipe(res);
   } catch (err) {
     next(err);
   }

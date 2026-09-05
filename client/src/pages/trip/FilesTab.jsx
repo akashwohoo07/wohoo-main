@@ -97,13 +97,12 @@ export default function FilesTab({ trip, isMember }) {
 
   useEffect(() => { if (isMember) load(); }, [isMember, load]);
 
-  const openLink = async (file, download) => {
-    setBusyId(file._id); setError("");
-    try {
-      const { data } = await api.get(`/trips/${trip._id}/files/${file._id}/link${download ? "?download=1" : ""}`);
-      window.open(data.url, "_blank", "noopener");
-    } catch (err) { setError(err.response?.data?.message || "Could not open file"); }
-    finally { setBusyId(null); }
+  // The file streams through our API (auth + membership checked every request),
+  // so the URL only works for the logged-in viewer — a forwarded link is useless
+  // to a non-member. Opening it as a top-level navigation sends the auth cookie.
+  const openLink = (file, download) => {
+    const url = `${import.meta.env.VITE_API_URL}/api/trips/${trip._id}/files/${file._id}/download${download ? "" : "?inline=1"}`;
+    window.open(url, "_blank", "noopener");
   };
 
   const removeFile = async (file) => {
