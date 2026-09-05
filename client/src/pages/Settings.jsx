@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, AtSign, Mail, ChevronRight, User as UserIcon, Camera, Loader2, Trash2, Crop } from "lucide-react";
+import { ArrowLeft, AtSign, Mail, ChevronRight, User as UserIcon, Loader2, Trash2, Crop, Pencil, Upload } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import api from "../api/axios";
 import { uploadImage, ACCEPTED_IMAGE_TYPES } from "../lib/uploadImage";
@@ -9,6 +9,30 @@ import ImageCropModal from "../components/ImageCropModal";
 
 // Cover crop shape (wide banner) vs avatar (square, round preview).
 const COVER_ASPECT = 3 / 1;
+
+// Little dropdown for a photo: Upload new / Adjust current / Remove.
+function PhotoMenu({ className = "", hasPhoto, labels, onUpload, onAdjust, onRemove }) {
+  return (
+    <div className={`absolute z-20 w-56 bg-white rounded-xl shadow-2xl border border-zinc-100 py-1.5 overflow-hidden ${className}`}>
+      <button onClick={onUpload} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-zinc-700 hover:bg-zinc-50 transition-colors">
+        <Upload className="w-4 h-4 text-zinc-400" /> {labels.upload}
+      </button>
+      {hasPhoto && (
+        <button onClick={onAdjust} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-zinc-700 hover:bg-zinc-50 transition-colors">
+          <Crop className="w-4 h-4 text-zinc-400" /> {labels.adjust}
+        </button>
+      )}
+      {hasPhoto && (
+        <>
+          <div className="h-px bg-zinc-100 my-1" />
+          <button onClick={onRemove} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-rose-500 hover:bg-rose-50 transition-colors">
+            <Trash2 className="w-4 h-4" /> {labels.remove}
+          </button>
+        </>
+      )}
+    </div>
+  );
+}
 
 // A settings row. Clickable rows get a chevron; static rows just show a value.
 function Row({ icon: Icon, label, value, hint, onClick, action }) {
@@ -39,6 +63,7 @@ export default function Settings() {
   const coverInput = useRef(null);
   const [busy, setBusy] = useState(null); // "avatar" | "cover" | null
   const [error, setError] = useState("");
+  const [menu, setMenu] = useState(null); // "avatar" | "cover" | null — which edit menu is open
   // { kind, src, aspect, cropShape, originalFile } while the cropper is open.
   const [crop, setCrop] = useState(null);
 
@@ -118,52 +143,61 @@ export default function Settings() {
       </header>
 
       <main className="max-w-2xl mx-auto px-4 py-6 space-y-6">
-        {/* Profile card — cover banner + avatar with upload controls */}
+        {/* Profile card — cover banner + avatar with an edit menu on each */}
         <div className="bg-white border border-zinc-100 rounded-2xl overflow-hidden">
           {/* Cover */}
-          <div className="relative h-28 sm:h-32 bg-gradient-to-br from-rose-100 via-zinc-100 to-blue-100">
+          <div className="relative h-40 sm:h-52 bg-gradient-to-br from-rose-100 via-zinc-100 to-blue-100">
             {user?.cover && <img src={user.cover} alt="" className="w-full h-full object-cover" />}
-            <div className="absolute top-2 right-2 flex gap-1.5">
-              {user?.cover && (
-                <>
-                  <button onClick={() => adjust("cover")} disabled={busy} title="Adjust cover"
-                    className="w-8 h-8 rounded-full bg-black/40 backdrop-blur text-white flex items-center justify-center hover:bg-black/55 disabled:opacity-50">
-                    <Crop className="w-4 h-4" />
-                  </button>
-                  <button onClick={() => removeImage("cover")} disabled={busy} title="Remove cover"
-                    className="w-8 h-8 rounded-full bg-black/40 backdrop-blur text-white flex items-center justify-center hover:bg-black/55 disabled:opacity-50">
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </>
-              )}
-              <button onClick={() => coverInput.current?.click()} disabled={busy} title="Change cover"
-                className="w-8 h-8 rounded-full bg-black/40 backdrop-blur text-white flex items-center justify-center hover:bg-black/55 disabled:opacity-50">
-                {busy === "cover" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Camera className="w-4 h-4" />}
+            <div className="absolute top-2.5 right-2.5">
+              <button onClick={() => setMenu(menu === "cover" ? null : "cover")} disabled={busy}
+                title="Edit cover photo"
+                className="inline-flex items-center gap-1.5 h-9 pl-3 pr-3.5 rounded-full bg-black/45 backdrop-blur text-white text-sm font-medium hover:bg-black/60 disabled:opacity-50">
+                {busy === "cover" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Pencil className="w-4 h-4" />}
+                Edit
               </button>
+              {menu === "cover" && (
+                <PhotoMenu
+                  className="right-0 top-full mt-2"
+                  hasPhoto={!!user?.cover}
+                  labels={{ upload: "Upload new cover", adjust: "Adjust current cover", remove: "Remove cover" }}
+                  onUpload={() => { setMenu(null); coverInput.current?.click(); }}
+                  onAdjust={() => { setMenu(null); adjust("cover"); }}
+                  onRemove={() => { setMenu(null); removeImage("cover"); }}
+                />
+              )}
             </div>
           </div>
 
           {/* Avatar + name */}
-          <div className="px-4 pb-4 -mt-9 flex items-end gap-3">
+          <div className="px-4 pb-4 -mt-10 flex items-end gap-3">
             <div className="relative flex-shrink-0">
               <div className="w-20 h-20 rounded-full ring-4 ring-white overflow-hidden bg-rose-100 flex items-center justify-center">
                 {user?.avatar ? <img src={user.avatar} alt="" className="w-full h-full object-cover" /> : <span className="text-2xl font-bold text-rose-600">{(user?.name || "?").charAt(0).toUpperCase()}</span>}
               </div>
-              <button onClick={() => avatarInput.current?.click()} disabled={busy} title="Change photo"
+              <button onClick={() => setMenu(menu === "avatar" ? null : "avatar")} disabled={busy}
+                title="Edit profile photo"
                 className="absolute -bottom-0.5 -right-0.5 w-7 h-7 rounded-full bg-rose-500 text-white flex items-center justify-center ring-2 ring-white hover:bg-rose-600 disabled:opacity-50">
-                {busy === "avatar" ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Camera className="w-3.5 h-3.5" />}
+                {busy === "avatar" ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Pencil className="w-3.5 h-3.5" />}
               </button>
+              {menu === "avatar" && (
+                <PhotoMenu
+                  className="left-0 top-full mt-1"
+                  hasPhoto={!!user?.avatar}
+                  labels={{ upload: "Upload new photo", adjust: "Adjust current photo", remove: "Remove photo" }}
+                  onUpload={() => { setMenu(null); avatarInput.current?.click(); }}
+                  onAdjust={() => { setMenu(null); adjust("avatar"); }}
+                  onRemove={() => { setMenu(null); removeImage("avatar"); }}
+                />
+              )}
             </div>
             <div className="min-w-0 pb-1 flex-1">
               <p className="text-base font-semibold text-zinc-900 truncate">{user?.name}</p>
               <p className="text-sm text-zinc-400 truncate">{user?.username ? `@${user.username}` : "No username yet"}</p>
             </div>
-            {user?.avatar && (
-              <button onClick={() => adjust("avatar")} disabled={busy} className="text-xs font-medium text-rose-500 hover:text-rose-600 inline-flex items-center gap-1 pb-1 flex-shrink-0">
-                <Crop className="w-3.5 h-3.5" /> Adjust
-              </button>
-            )}
           </div>
+
+          {/* Backdrop to dismiss an open menu on outside click. */}
+          {menu && <div className="fixed inset-0 z-10" onClick={() => setMenu(null)} />}
 
           {error && <p className="text-sm text-rose-500 px-4 pb-3 -mt-1">{error}</p>}
 
