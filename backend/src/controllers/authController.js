@@ -176,31 +176,6 @@ export const refreshAccessToken = async (req, res, next) => {
   }
 };
 
-// TEMP diagnostic — reports (without exposing token values) whether the auth
-// cookies arrive on this request and, if so, why refresh would succeed/fail.
-// Remove after debugging the "logged out on reopen" issue.
-export const authDebug = async (req, res) => {
-  const token = req.cookies?.refreshToken;
-  let refreshState = "absent";
-  if (token) {
-    try {
-      const decoded = jwt.verify(token, process.env.JWT_REFRESH_SECRET);
-      const user = await User.findById(decoded.id).select("+refreshToken");
-      refreshState = !user ? "user_gone" : user.refreshToken === hashToken(token) ? "valid_match" : "hash_mismatch";
-    } catch (e) {
-      refreshState = `verify_failed:${e.name}`;
-    }
-  }
-  res.json({
-    cookieNames: Object.keys(req.cookies || {}),
-    hasAccessCookie: !!req.cookies?.accessToken,
-    hasRefreshCookie: !!token,
-    refreshState,
-    origin: req.get("origin") || null,
-    userAgent: req.get("user-agent") || null,
-  });
-};
-
 export const logout = async (req, res, next) => {
   try {
     // Revoke server-side regardless of client type (cookie for web, body/header for mobile).

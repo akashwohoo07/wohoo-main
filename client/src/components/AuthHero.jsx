@@ -1,4 +1,6 @@
 import { useState, useEffect } from "react";
+import { Navigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 
 // Mirrors the homepage (/) hero: split layout with the beach image, cream
 // background, Cormorant Garamond headings + Jost body, pink-gradient accents.
@@ -30,6 +32,7 @@ const COPY = {
 };
 
 export default function AuthHero({ initialTab = "login" }) {
+  const { user, loading } = useAuth();
   const [tab, setTab] = useState(initialTab);
   const [notice, setNotice] = useState(null);
 
@@ -48,6 +51,9 @@ export default function AuthHero({ initialTab = "login" }) {
   }, []);
 
   const copy = COPY[tab];
+
+  // Already signed in? Skip the login/signup screen and go to the app.
+  if (!loading && user) return <Navigate to="/dashboard" replace />;
 
   return (
     <section className="relative min-h-screen overflow-hidden bg-[#FAFAF8]">

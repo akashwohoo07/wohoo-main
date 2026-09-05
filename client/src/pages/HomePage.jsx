@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from "react";
+import { Navigate } from "react-router-dom";
 import { Mountain, Waves, Trees, Moon, Globe, Star, Check } from "lucide-react";
 import { useSeo } from "../lib/seo";
+import { useAuth } from "../context/AuthContext";
 
 /* ══════════════════════════════════════════════════
    GLOBAL CSS
@@ -315,6 +317,7 @@ function Stat({ value, suffix, label }) {
 export default function WohooHome() {
   useSeo({ full: true });
   useScrollReveal();
+  const { user, loading } = useAuth();
   const heroRef = useRef(null);
   const [parallax, setParallax] = useState(0);
   const [activeT, setActiveT] = useState(0);
@@ -340,6 +343,10 @@ export default function WohooHome() {
 
   const px = isMob ? "20px" : "5vw";
   const sectionPad = isMob ? "72px 20px" : "110px 5vw";
+
+  // Logged-in users landing on "/" go straight to their dashboard — otherwise
+  // reopening wohoo.in shows the marketing page and *looks* like a logout.
+  if (!loading && user) return <Navigate to="/dashboard" replace />;
 
   return (
     <>
