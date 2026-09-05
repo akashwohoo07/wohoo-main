@@ -1,6 +1,6 @@
 import express from "express";
 import passport from "passport";
-import { googleCallback, googleMobileAuth, refreshAccessToken, logout, getMe } from "../controllers/authController.js";
+import { googleCallback, googleMobileAuth, refreshAccessToken, logout, getMe, authDebug } from "../controllers/authController.js";
 import { protect } from "../middleware/auth.js";
 
 const router = express.Router();
@@ -58,5 +58,6 @@ router.post("/google/mobile", googleMobileAuth);
 router.post("/refresh", refreshAccessToken);
 router.post("/logout", logout);
 router.get("/me", protect, getMe);
+router.get("/debug", authDebug); // TEMP — cookie diagnostic, remove after
 
 export default router;
