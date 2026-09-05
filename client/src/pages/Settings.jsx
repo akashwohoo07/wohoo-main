@@ -58,15 +58,26 @@ export default function Settings() {
 
   // Re-adjust an existing photo → open the cropper on the stored ORIGINAL
   // (falls back to the current cropped image for pre-crop-feature photos).
-  const adjust = (kind) => {
+  const closeCrop = () => setCrop((c) => { if (c?.isBlobUrl) URL.revokeObjectURL(c.src); return null; });
+
+  const adjust = async (kind) => {
     const raw = user?.[`${kind}Original`] || user?.[kind];
     if (!raw) return;
-    setError("");
-    // Cache-bust so the cropper's cross-origin request is fresh (and gets the
-    // CDN's CORS header) instead of reusing a non-CORS copy the browser cached
-    // when the image was first shown via a plain <img>.
-    const src = `${raw}${raw.includes("?") ? "&" : "?"}cors=${Date.now()}`;
-    setCrop({ kind, src, originalFile: null, aspect: kind === "cover" ? COVER_ASPECT : 1, cropShape: kind === "cover" ? "rect" : "round" });
+    setError(""); setBusy(kind);
+    try {
+      // Fetch the image as a blob (a single CORS request; cache-busted so it
+      // never reuses the non-CORS copy the browser cached for the plain <img>),
+      // then use a same-origin blob: URL — so the cropper + canvas have zero
+      // cross-origin/canvas-taint issues.
+      const res = await fetch(`${raw}${raw.includes("?") ? "&" : "?"}cors=${Date.now()}`, { mode: "cors", cache: "no-store" });
+      if (!res.ok) throw new Error("fetch failed");
+      const blobUrl = URL.createObjectURL(await res.blob());
+      setCrop({ kind, src: blobUrl, isBlobUrl: true, originalFile: null, aspect: kind === "cover" ? COVER_ASPECT : 1, cropShape: kind === "cover" ? "rect" : "round" });
+    } catch {
+      setError("Could not load the photo to adjust. Try re-uploading it.");
+    } finally {
+      setBusy(null);
+    }
   };
 
   // Save from the cropper: upload the cropped image; if it's a brand-new file,
@@ -81,7 +92,7 @@ export default function Settings() {
       patch[`${kind}Original`] = origUrl;
     }
     setUser((u) => ({ ...u, ...patch }));
-    setCrop(null);
+    closeCrop();
   };
 
   const removeImage = async (kind) => {
@@ -195,7 +206,7 @@ export default function Settings() {
           aspect={crop.aspect}
           cropShape={crop.cropShape}
           title={crop.kind === "cover" ? "Adjust cover photo" : "Adjust profile photo"}
-          onCancel={() => setCrop(null)}
+          onCancel={closeCrop}
           onSave={onCropSave}
         />
       )}
