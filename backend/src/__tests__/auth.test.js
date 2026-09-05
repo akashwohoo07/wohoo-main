@@ -65,7 +65,7 @@ describe("Auth API", () => {
       expect(cookies.some((c) => c.startsWith("accessToken="))).toBe(true);
     });
 
-    it("slides a long-lived (≈1yr) refresh session and rotates the token", async () => {
+    it("issues a new access token WITHOUT rotating the refresh token (stable across reloads/tabs)", async () => {
       const { user } = await createAuthUser();
       const refreshToken = generateRefreshToken(user._id);
       const oldHash = hashToken(refreshToken);
@@ -75,23 +75,21 @@ describe("Auth API", () => {
         .post("/api/auth/refresh")
         .set("Cookie", `refreshToken=${refreshToken}`);
       expect(res.status).toBe(200);
-
       const cookies = res.headers["set-cookie"];
-      const refreshCookie = cookies.find((c) => c.startsWith("refreshToken="));
-      expect(refreshCookie).toBeDefined();
-      // Sliding session: the refresh cookie carries a long Max-Age (> 300 days).
-      const maxAge = Number(/Max-Age=(\d+)/i.exec(refreshCookie)?.[1]);
-      expect(maxAge).toBeGreaterThan(300 * 24 * 60 * 60);
-      // httpOnly (not readable by JS) — XSS-safe.
-      expect(/HttpOnly/i.test(refreshCookie)).toBe(true);
+      // A fresh access cookie is issued...
+      const accessCookie = cookies.find((c) => c.startsWith("accessToken="));
+      expect(accessCookie).toBeDefined();
+      expect(/HttpOnly/i.test(accessCookie)).toBe(true);
 
-      // Rotation: the stored hash changed, so the OLD token no longer works.
+      // ...but the refresh token is NOT rotated: the stored hash is unchanged and
+      // the SAME token still works (so concurrent refreshes / reopened tabs never
+      // invalidate each other → no surprise logouts).
       const after = await User.findById(user._id).select("+refreshToken");
-      expect(after.refreshToken).not.toBe(oldHash);
+      expect(after.refreshToken).toBe(oldHash);
       const reuse = await request(app)
         .post("/api/auth/refresh")
         .set("Cookie", `refreshToken=${refreshToken}`);
-      expect(reuse.status).toBe(401);
+      expect(reuse.status).toBe(200);
     });
 
     it("refreshes for a legacy account whose username predates schema rules", async () => {

@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect } from "react";
-import api from "../api/axios";
+import api, { refreshSession } from "../api/axios";
 
 const AuthContext = createContext(null);
 
@@ -21,7 +21,7 @@ export const AuthProvider = ({ children }) => {
         // logged in — they only truly log out if the refresh token is
         // gone/expired (≈1 year of no visits) or revoked (manual logout).
         try {
-          await api.post("/auth/refresh");
+          await refreshSession(); // shared single-flight refresh
           const res = await api.get("/auth/me");
           if (!cancelled) setUser(res.data.user);
         } catch {

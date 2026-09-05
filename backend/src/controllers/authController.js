@@ -143,19 +143,33 @@ export const refreshAccessToken = async (req, res, next) => {
     const token = fromCookie || req.body?.refreshToken || req.get("x-refresh-token");
     const isMobile = !fromCookie && !!token;
     if (!token) return res.status(401).json({ success: false, message: "No refresh token" });
-    const decoded = jwt.verify(token, process.env.JWT_REFRESH_SECRET);
+
+    let decoded;
+    try {
+      decoded = jwt.verify(token, process.env.JWT_REFRESH_SECRET);
+    } catch {
+      clearAuthCookies(res);
+      return res.status(401).json({ success: false, message: "Invalid or expired refresh token" });
+    }
+
     const user = await User.findById(decoded.id).select("+refreshToken");
     if (!user || user.refreshToken !== hashToken(token)) {
       return res.status(401).json({ success: false, message: "Invalid refresh token" });
     }
-    const { accessToken, refreshToken: newRefreshToken } = generateTokens(user._id);
-    // Atomic single-field update — see googleCallback note.
-    await User.findByIdAndUpdate(user._id, { refreshToken: hashToken(newRefreshToken) });
+
+    // Issue a fresh ACCESS token only. We deliberately KEEP THE SAME refresh
+    // token (no rotation): the refresh token is httpOnly + secure + sameSite and
+    // revoked on logout, and NOT rotating means concurrent refreshes / multiple
+    // tabs / a quick reload can never invalidate each other — which was the cause
+    // of users getting logged out on reopen.
+    const accessToken = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: ACCESS_TOKEN_TTL });
+
     if (isMobile) {
-      // Return rotated tokens in the body for the app to store securely.
-      return res.json({ success: true, accessToken, refreshToken: newRefreshToken });
+      return res.json({ success: true, accessToken, refreshToken: token });
     }
-    setCookies(res, accessToken, newRefreshToken);
+    // Only the access cookie changes; the refresh cookie persists from login.
+    const opts = baseCookieOptions();
+    res.cookie("accessToken", accessToken, { ...opts, maxAge: ACCESS_COOKIE_MAX_AGE });
     res.json({ success: true });
   } catch (err) {
     next(err);
