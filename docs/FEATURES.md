@@ -6,6 +6,28 @@ Update this file whenever a feature is added, changed, or removed. Keep entries 
 
 ## Changelog
 
+### 2026-09-05 — Trip files: secure documents (private R2 bucket, tickets/IDs/bookings)
+- New **Files** tab: upload **PDFs + images** (tickets, bookings, IDs, docs) per trip. Each file
+  has a **name**, a **visibility** (`members` = all trip members, or `private` = only the uploader),
+  **view / download / delete**, and rename/visibility edit (uploader).
+- **Security-first storage:** documents live in a **separate PRIVATE R2 bucket** (`wohoo-files`, no
+  public access). Nothing is readable by raw URL. View/Download mint a **short-lived signed link
+  (5 min)** only after an auth + visibility check. A `private` file is visible **only to its
+  uploader** — not even the trip owner. (Avatars/covers stay on the public bucket — profiles are
+  public by design.)
+- **Permissions:** owner always uploads; **editors only if the owner enables "editors can upload"**
+  (per-trip toggle, default off); viewers never. Delete: uploader or trip owner.
+- **Limits (per trip):** **10 PDFs ≤ 5 MB + 10 images ≤ 10 MB** (separate quotas, enforced at
+  presign + re-checked at confirm via HEAD). Images are compressed client-side but kept readable
+  (≤2000 px); PDFs stored as-is (browser can't reliably recompress PDFs).
+- **Scalable:** browser → R2 direct presigned PUT (bytes never touch the app tier). New `TripFile`
+  model; `Trip.filesEditorsCanUpload` flag; `config/r2.js` split into public + private buckets;
+  routes at `/api/trips/:tripId/files`.
+- **Tests**: `tripFiles.test.js` (15) — upload permission matrix (owner/editor-toggle/viewer),
+  content-type + quota limits, confirm size/type + cleanup, visibility access (private = uploader
+  only, even owner denied), signed-link authz, edit/delete authz, owner-only settings toggle.
+  Backend 321 green. Full private chain verified against real R2 (unsigned access denied).
+
 ### 2026-09-05 — Profile picture & cover uploads (Cloudflare R2, direct-to-storage)
 - Users can upload a **profile photo** and a **cover banner** from **Settings** (camera buttons on
   the avatar + cover; remove buttons too). Cover shows on the public profile behind the avatar.

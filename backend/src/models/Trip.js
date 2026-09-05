@@ -57,6 +57,9 @@ const tripSchema = new mongoose.Schema(
     ],
     status: { type: String, enum: ["upcoming", "ongoing", "past"], default: "upcoming" },
     isPublic: { type: Boolean, default: false, index: true },
+    // Files tab: by default only the owner can upload documents. The owner can
+    // flip this on to let editors upload too.
+    filesEditorsCanUpload: { type: Boolean, default: false },
   },
   { timestamps: true, optimisticConcurrency: true }
 );

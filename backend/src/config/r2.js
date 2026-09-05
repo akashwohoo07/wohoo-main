@@ -9,22 +9,27 @@ const {
   R2_ACCOUNT_ID,
   R2_ACCESS_KEY_ID,
   R2_SECRET_ACCESS_KEY,
-  R2_BUCKET,
-  R2_PUBLIC_URL, // e.g. https://cdn.wohoo.in  (public bucket domain)
+  R2_BUCKET,        // PUBLIC bucket for avatars/covers (served via public URL)
+  R2_PUBLIC_URL,    // e.g. https://cdn.wohoo.in  (public bucket domain)
+  R2_FILES_BUCKET,  // PRIVATE bucket for trip documents (served via signed URLs)
 } = process.env;
 
-export const r2Configured = Boolean(
-  R2_ACCOUNT_ID && R2_ACCESS_KEY_ID && R2_SECRET_ACCESS_KEY && R2_BUCKET && R2_PUBLIC_URL
-);
+const hasCreds = Boolean(R2_ACCOUNT_ID && R2_ACCESS_KEY_ID && R2_SECRET_ACCESS_KEY);
 
+// Public image uploads (avatars/covers) need the public bucket + public base.
+export const r2Configured = Boolean(hasCreds && R2_BUCKET && R2_PUBLIC_URL);
 export const R2_BUCKET_NAME = R2_BUCKET;
-// Public base used to build the stored image URL (served via Cloudflare CDN).
 export const R2_PUBLIC_BASE = (R2_PUBLIC_URL || "").replace(/\/+$/, "");
+
+// Private document uploads (trip files) need only the private bucket — access is
+// always via short-lived signed URLs, never a public base.
+export const filesConfigured = Boolean(hasCreds && R2_FILES_BUCKET);
+export const R2_FILES_BUCKET_NAME = R2_FILES_BUCKET;
 
 // Lazily created so importing this file never throws when R2 isn't configured.
 let _client = null;
 export function getR2() {
-  if (!r2Configured) return null;
+  if (!hasCreds) return null;
   if (!_client) {
     _client = new S3Client({
       region: "auto",
