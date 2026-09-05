@@ -59,9 +59,13 @@ export default function Settings() {
   // Re-adjust an existing photo → open the cropper on the stored ORIGINAL
   // (falls back to the current cropped image for pre-crop-feature photos).
   const adjust = (kind) => {
-    const src = user?.[`${kind}Original`] || user?.[kind];
-    if (!src) return;
+    const raw = user?.[`${kind}Original`] || user?.[kind];
+    if (!raw) return;
     setError("");
+    // Cache-bust so the cropper's cross-origin request is fresh (and gets the
+    // CDN's CORS header) instead of reusing a non-CORS copy the browser cached
+    // when the image was first shown via a plain <img>.
+    const src = `${raw}${raw.includes("?") ? "&" : "?"}cors=${Date.now()}`;
     setCrop({ kind, src, originalFile: null, aspect: kind === "cover" ? COVER_ASPECT : 1, cropShape: kind === "cover" ? "rect" : "round" });
   };
 
