@@ -16,6 +16,9 @@ export const MAX_UPLOAD_BYTES = 25 * 1024 * 1024; // 25 MB
 const COMPRESS = {
   avatar: { maxWidthOrHeight: 512, maxSizeMB: 0.6, initialQuality: 0.85 },
   cover: { maxWidthOrHeight: 1600, maxSizeMB: 2, initialQuality: 0.85 },
+  // Uncropped originals — keep more resolution so re-cropping later stays sharp.
+  avatarOriginal: { maxWidthOrHeight: 1600, maxSizeMB: 2.5, initialQuality: 0.88 },
+  coverOriginal: { maxWidthOrHeight: 2400, maxSizeMB: 4, initialQuality: 0.88 },
 };
 
 async function compress(file, kind) {

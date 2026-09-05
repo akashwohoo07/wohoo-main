@@ -11,6 +11,9 @@ import { getR2, r2Configured, R2_BUCKET_NAME, R2_PUBLIC_BASE } from "../config/r
 const KINDS = {
   avatar: { field: "avatar", maxBytes: 25 * 1024 * 1024 },
   cover:  { field: "cover",  maxBytes: 25 * 1024 * 1024 },
+  // Uncropped originals — same buckets/limits, stored so the crop can be redone.
+  avatarOriginal: { field: "avatarOriginal", maxBytes: 25 * 1024 * 1024 },
+  coverOriginal:  { field: "coverOriginal",  maxBytes: 25 * 1024 * 1024 },
 };
 // Only real image types (whitelist, not user-trusted). ext is what we store.
 const CONTENT_TYPES = {

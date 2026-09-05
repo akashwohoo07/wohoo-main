@@ -19,6 +19,10 @@ const userSchema = new mongoose.Schema(
     googleId: { type: String, unique: true, sparse: true, index: true },
     avatar: String,
     cover: String, // profile cover/banner image (uploaded to R2)
+    // The uncropped originals, kept so the user can re-adjust the crop anytime
+    // at full quality (never shown publicly; only loaded into the cropper).
+    avatarOriginal: String,
+    coverOriginal: String,
     isVerified: { type: Boolean, default: false },
     refreshToken: { type: String, select: false },
     // ✅ Denormalized counts — O(1) reads, updated atomically

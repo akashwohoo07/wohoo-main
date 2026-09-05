@@ -6,6 +6,17 @@ Update this file whenever a feature is added, changed, or removed. Keep entries 
 
 ## Changelog
 
+### 2026-09-05 — Adjustable profile & cover photos (crop/zoom, re-editable anytime)
+- Picking a new avatar/cover opens a **cropper** (react-easy-crop): drag to reposition, slider/
+  pinch to zoom. Avatar = square (round preview); cover = wide 3:1 banner.
+- **Re-adjust anytime:** an **Adjust** button on the existing avatar/cover re-opens the cropper.
+  We keep the **uncropped original** (`User.avatarOriginal` / `coverOriginal`, higher-res, never
+  shown publicly) so re-cropping is full-quality — not a re-crop of an already-cropped image.
+- The displayed avatar/cover stays a clean cropped version (URL used everywhere, unchanged).
+  Cropped image made on a canvas in the browser → compressed → uploaded to R2; the original is
+  uploaded once too (kinds `avatarOriginal`/`coverOriginal` added to the uploads controller).
+  Removing a photo also drops its stored original. CDN CORS verified so the canvas re-crop works.
+
 ### 2026-09-05 — Trip files: secure documents (private R2 bucket, tickets/IDs/bookings)
 - New **Files** tab: upload **PDFs + images** (tickets, bookings, IDs, docs) per trip. Each file
   has a **name**, a **visibility** (`members` = all trip members, or `private` = only the uploader),
